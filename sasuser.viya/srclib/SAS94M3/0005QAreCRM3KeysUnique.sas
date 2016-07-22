@@ -8,8 +8,8 @@ data work.crm3_pvcount;
 run;
 
 data _null_;
-	if 0 then set work.crm3_pvcount nobs=countnuk;  		*** Highly efficient way to count nobs without reading a single observation;
-	call symput('NonUniqueKeys', strip(put(countnuk,8.)));  *** strip = trim(left(.));
+	if 0 then set work.crm3_pvcount nobs=countnuk;  		/* Highly efficient way to count nobs without reading a single observation */
+	call symput('NonUniqueKeys', strip(put(countnuk,8.)));  /* strip = trim(left(.)) */
 	stop;
 run;
 

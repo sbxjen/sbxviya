@@ -8,8 +8,8 @@ data work.matm2count;
 run;
 
 data _null_;
-	if 0 then set work.matm2count nobs=countnuk;  			*** Highly efficient way to count nobs without reading a single observation;
-	call symput('NonUniqueKeys', strip(put(countnuk,8.)));  *** strip = trim(left(.));
+	if 0 then set work.matm2count nobs=countnuk;  			/* Highly efficient way to count nobs without reading a single observation */
+	call symput('NonUniqueKeys', strip(put(countnuk,8.)));  /* strip = trim(left(.)) */
 	stop;
 run;
 
