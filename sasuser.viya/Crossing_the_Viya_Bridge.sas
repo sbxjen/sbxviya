@@ -27,7 +27,6 @@ endrsubmit;
 signoff;
 /* NOTE: Remote signoff from MYSERVER complete. */
 
-
 /***
 /* Allocate CAS library – MYCAS as sasuser. */
 %let caslibname=mycas;
