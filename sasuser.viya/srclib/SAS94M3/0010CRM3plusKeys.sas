@@ -11,7 +11,7 @@ proc sort data=mysas.crm3_pv out=myownsas.crm3_pv;
 	by ts_registratie;	
 run;
 data myownsas.crm3_pv;
-	set myownsas.crm3_pv;
+	set myownsas.crm3_pv(obs=100);
 	by ts_registratie;
 	if first.ts_registratie then output; *** Only output first observation of non-unique ones.; 
 run;
