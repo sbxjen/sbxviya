@@ -1,5 +1,3 @@
-caslib aperam list;
-
 /* List Tables (in-memory) and Files (in Datasource) */
 proc casutil; 
 	list tables incaslib="aperam"; 
@@ -17,18 +15,26 @@ proc casutil outcaslib="aperam";
 run;
 
 data mycas.matm2(duplicate=yes);
-	set mycas.matm2;
+	set mycas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr);
 	where a_dch=0 and ln_pr='CRM3';
-	keep ts_be ts_ei cl_n dch_n bew_vn;
+	drop a_dch ln_pr;
 run;
 
-data mycas.crm3_pvb(partition=(mon) orderby=(ts_registratie));
+/*
+%let nworkers=%sysfunc(getsessopt("mysess", "nworkers"));
+%put &nworkers=;
+*/
+%let nworkers=10;
+
+data mycas.crm3_pvb(partition=(x) orderby=(ts_registratie));
 	set mycas.crm3_pv(orderby=(ts_registratie));
-	length mon $2;
-	mon = strip(put(month(ts_registratie),2.));
+	length x $1;
+	x = strip(put(mod(ts_registratie, input(&nworkers,best.)),$1.));
 	by ts_registratie;
 	if first.ts_registratie then output; /* Only output first observation of non-unique ones.; */
 run;
+
+
 
 data _null_;
 	if 0 then set work.matm2 nobs=lookupnobs;
