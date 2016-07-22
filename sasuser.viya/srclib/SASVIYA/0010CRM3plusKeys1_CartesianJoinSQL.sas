@@ -1,5 +1,13 @@
-options fullstimer;
+caslib aperam list;
 
+/* List Tables (in-memory) and Files (in Datasource) */
+proc casutil; 
+	list tables incaslib="aperam"; 
+	list files incaslib="aperam"; 
+run;
+
+/* Measure real time */
+options fullstimer;
 %let t = %sysfunc(datetime());
 
 /* Load data in-memory. */
@@ -7,7 +15,7 @@ proc casutil outcaslib="aperam";
 	load casdata="matm2.sas7bdat" casout="matm2";
 	load casdata="crm3_pv.sas7bdat" casout="crm3_pv";
 run;
-	
+
 data mycas.matm2(duplicate=yes);
 	set mycas.matm2;
 	where a_dch=0 and ln_pr='CRM3';
@@ -43,3 +51,8 @@ data mycas.crm3plusKeysKeyCols(drop=ts_be ts_ei mon matm2start matm2end);
 run;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+
+
+/* Shutdown CAS session */
+caslib _all_ drop;
+cas mysess disconnect; cas mysess terminate;

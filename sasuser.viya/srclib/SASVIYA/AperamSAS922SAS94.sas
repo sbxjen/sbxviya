@@ -1,10 +1,11 @@
-/* Convert the SAS 9.x Data Sets. */
+/* Convert the SAS 9.x Data Sets */
 %let datadir = "/tmp/srcdata/";
 %let viyadir = "/tmp/viya/";
 
 libname mysasv9 cvp &datadir.;
 libname mysas &viyadir.;
 
+/* List the TABLES you want to convert */
 %let tables = 	matm2
 				ba_all_skp_ont
 				crm3_pv_2015Q1 crm3_pv_2015Q2 crm3_pv_2015Q3 crm3_pv_2015Q4 crm3_pv crm3_sigdef 
