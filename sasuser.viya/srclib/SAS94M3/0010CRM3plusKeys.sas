@@ -3,6 +3,10 @@ libname mysas "/tmp/viya/";
 libname myownsas "/tmp/v94/";
 *;
 
+/* Measure real time */
+options fullstimer;
+%let t = %sysfunc(datetime());
+
 /* Sort matm2 by ts_be */
 proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr 
 		where=(a_dch=0 and ln_pr='CRM3')) 
@@ -36,5 +40,7 @@ data myownsas.crm3plusKeysKeyCols;
 	end;
 	keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100;
 run;
+
+%put ### %sysevalf( %sysfunc(datetime()) - &t. );
 
 /* end of program */

@@ -4,15 +4,15 @@ proc casutil;
 	list files incaslib="aperam"; 
 run;
 
-/* Measure real time */
-options fullstimer;
-%let t = %sysfunc(datetime());
-
 /* Load data in-memory. */
 proc casutil outcaslib="aperam";
 	load casdata="matm2.sas7bdat" casout="matm2";
 	load casdata="crm3_pv.sas7bdat" casout="crm3_pv";
 run;
+
+/* Measure real time */
+options fullstimer;
+%let t = %sysfunc(datetime());
 
 data mycas.matm2(duplicate=yes);
 	set mycas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr);
@@ -33,7 +33,6 @@ data mycas.crm3_pvb(partition=(x) orderby=(ts_registratie));
 	by ts_registratie;
 	if first.ts_registratie then output; /* Only output first observation of non-unique ones.; */
 run;
-
 
 
 data _null_;
@@ -58,7 +57,8 @@ run;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
 
-
 /* Shutdown CAS session */
 caslib _all_ drop;
 cas mysess disconnect; cas mysess terminate;
+
+/* end of program */
