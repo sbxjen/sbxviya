@@ -12,6 +12,6 @@ proc print data=mycas.baseball; run; /* doesn't work */
 
 data mycas.baseball(partition=(v) orderby=(nHome));
 	v='v';
-	set mycas.baseball; /* doesn't work */
+	set mycas.baseball;
 run;
 proc print data=mycas.baseball; run /* works */
