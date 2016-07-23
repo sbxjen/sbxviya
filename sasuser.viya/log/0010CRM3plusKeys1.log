@@ -1,4 +1,4 @@
-1                                                          The SAS System                                20:47 Friday, July 22, 2016
+1                                                          The SAS System                              20:10 Saturday, July 23, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -58,7 +58,7 @@ NOTE: Libref MYOWNSAS was successfully assigned as follows:
 9          
 10         /* Sort matm2 by ts_be */
 11         proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr
-2                                                          The SAS System                                20:47 Friday, July 22, 2016
+2                                                          The SAS System                              20:10 Saturday, July 23, 2016
 
 12         		where=(a_dch=0 and ln_pr='CRM3'))
 13         		out=myownsas.matm2(drop=a_dch ln_pr); /* All unique, cf. 0005AreMATm2KeysUnique.sas */
@@ -72,17 +72,17 @@ NOTE: The data set MYOWNSAS.MATM2 has 35783 observations and 5 variables.
 NOTE: PROCEDURE SORT used (Total process time):
       real time           0.10 seconds
       user cpu time       0.03 seconds
-      system cpu time     0.06 seconds
+      system cpu time     0.05 seconds
       memory              5920.43k
       OS Memory           12988.00k
-      Timestamp           22/07/2016 08:47:48 PM
+      Timestamp           23/07/2016 08:10:47 PM
       Step Count                        1  Switch Count  0
       Page Faults                       1
       Page Reclaims                     1556
       Page Swaps                        0
-      Voluntary Context Switches        2
+      Voluntary Context Switches        1
       Involuntary Context Switches      0
-      Block Input Operations            216
+      Block Input Operations            392
       Block Output Operations           3480
       
 
@@ -95,19 +95,19 @@ NOTE: PROCEDURE SORT used (Total process time):
 NOTE: There were 3112977 observations read from the data set MYSAS.CRM3_PV.
 NOTE: The data set MYOWNSAS.CRM3_PV has 3112977 observations and 403 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           2:15.93
-      user cpu time       23.43 seconds
-      system cpu time     37.40 seconds
+      real time           1:48.37
+      user cpu time       23.87 seconds
+      system cpu time     36.29 seconds
       memory              1057376.31k
       OS Memory           1066212.00k
-      Timestamp           22/07/2016 08:50:04 PM
+      Timestamp           23/07/2016 08:12:35 PM
       Step Count                        2  Switch Count  0
-      Page Faults                       1
-      Page Reclaims                     184629
+      Page Faults                       0
+      Page Reclaims                     184623
       Page Swaps                        0
-      Voluntary Context Switches        338524
-      Involuntary Context Switches      167
-      Block Input Operations            496
+      Voluntary Context Switches        327491
+      Involuntary Context Switches      155
+      Block Input Operations            0
       Block Output Operations           39846832
       
 
@@ -118,25 +118,25 @@ NOTE: PROCEDURE SORT used (Total process time):
 24       ! */
 25         run;
 
-3                                                          The SAS System                                20:47 Friday, July 22, 2016
+3                                                          The SAS System                              20:10 Saturday, July 23, 2016
 
 NOTE: There were 3112977 observations read from the data set MYOWNSAS.CRM3_PV.
 NOTE: The data set MYOWNSAS.CRM3_PV has 3112627 observations and 403 variables.
 NOTE: DATA statement used (Total process time):
-      real time           56.52 seconds
-      user cpu time       2.36 seconds
-      system cpu time     15.68 seconds
+      real time           48.35 seconds
+      user cpu time       2.71 seconds
+      system cpu time     15.27 seconds
       memory              1892.34k
       OS Memory           11440.00k
-      Timestamp           22/07/2016 08:51:01 PM
+      Timestamp           23/07/2016 08:13:24 PM
       Step Count                        3  Switch Count  0
-      Page Faults                       11
-      Page Reclaims                     713
+      Page Faults                       0
+      Page Reclaims                     724
       Page Swaps                        0
-      Voluntary Context Switches        4431
-      Involuntary Context Switches      19
-      Block Input Operations            3752
-      Block Output Operations           19921336
+      Voluntary Context Switches        2518
+      Involuntary Context Switches      23
+      Block Input Operations            0
+      Block Output Operations           19921392
       
 
 26         
@@ -144,69 +144,62 @@ NOTE: DATA statement used (Total process time):
 28            Obs in matm2 start in 2011, those in crm3_pv start in 2016. */
 29         data myownsas.crm3plusKeysKeyCols;
 30         	if _n_ = 1 then do;
-31         		set myownsas.crm3_pv; end;
+31         		set myownsas.crm3_pv;
 32         		ts_ei = .; /* not really needed */
 33         	end;
-            ___
-            161
-ERROR 161-185: No matching DO/SELECT statement.
-
 34         	do while (ts_ei < ts_registratie);
 35         		set myownsas.matm2; /* ts_ei UP */
 36         	end;
 37         	do while (ts_registratie <= ts_ei);
 38         		if (ts_registratie >= ts_be) then output;
-39         		set work.crm3_pv;  /* ts_registratie UP */
-ERROR: File WORK.CRM3_PV.DATA does not exist.
+39         		set myownsas.crm3_pv;  /* ts_registratie UP */
 40         	end;
-41         	keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100;
+41         	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100;
 42         run;
 
-NOTE: The SAS System stopped processing this step because of errors.
-NOTE: SAS set option OBS=0 and will continue to check statements. This might cause NOTE: No observations in data set.
-WARNING: The data set MYOWNSAS.CRM3PLUSKEYSKEYCOLS may be incomplete.  When this step was stopped there were 0 observations and 7 
-         variables.
+NOTE: There were 1 observations read from the data set MYOWNSAS.CRM3_PV.
+NOTE: There were 35783 observations read from the data set MYOWNSAS.MATM2.
+NOTE: There were 3097262 observations read from the data set MYOWNSAS.CRM3_PV.
+NOTE: The data set MYOWNSAS.CRM3PLUSKEYSKEYCOLS has 2696238 observations and 408 variables.
 NOTE: DATA statement used (Total process time):
-      real time           1.53 seconds
-      user cpu time       0.01 seconds
-      system cpu time     0.00 seconds
-      memory              1268.09k
-      OS Memory           11436.00k
-      Timestamp           22/07/2016 08:51:02 PM
+      real time           51.43 seconds
+      user cpu time       1.91 seconds
+      system cpu time     12.78 seconds
+      memory              2103.84k
+      OS Memory           11696.00k
+      Timestamp           23/07/2016 08:14:15 PM
       Step Count                        4  Switch Count  0
-      Page Faults                       1
-      Page Reclaims                     503
+      Page Faults                       0
+      Page Reclaims                     381
       Page Swaps                        0
-      Voluntary Context Switches        3
-4                                                          The SAS System                                20:47 Friday, July 22, 2016
-
-      Involuntary Context Switches      0
-      Block Input Operations            2736
-      Block Output Operations           136
+      Voluntary Context Switches        5088
+      Involuntary Context Switches      15
+      Block Input Operations            0
+      Block Output Operations           17256208
       
+
+4                                                          The SAS System                              20:10 Saturday, July 23, 2016
 
 43         
 44         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-### 194.49233007431
+### 208.276329994201
 45         
 46         /* end of program */
 
-ERROR: Errors printed on page 3.
-
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           3:14.78
-      user cpu time       25.85 seconds
-      system cpu time     53.15 seconds
+      real time           3:28.29
+      user cpu time       28.54 seconds
+      system cpu time     1:04.41
       memory              1063363.18k
       OS Memory           1066212.00k
-      Timestamp           22/07/2016 08:51:03 PM
+      Timestamp           23/07/2016 08:14:15 PM
       Step Count                        4  Switch Count  14
-      Page Faults                       17
-      Page Reclaims                     192985
+      Page Faults                       1
+      Page Reclaims                     192868
       Page Swaps                        0
-      Voluntary Context Switches        343024
-      Involuntary Context Switches      189
-      Block Input Operations            8136
-      Block Output Operations           59771816
+      Voluntary Context Switches        335158
+      Involuntary Context Switches      196
+      Block Input Operations            392
+      Block Output Operations           77027952
       
