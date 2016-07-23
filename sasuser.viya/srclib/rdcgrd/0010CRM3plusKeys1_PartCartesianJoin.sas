@@ -23,11 +23,11 @@ run;
 %let nworkers=%sysfunc(getsessopt("mysess", "nworkers")); /* 100 */
 %put &nworkers=;
 
-data mycas.crm3_pv(partition=(x) orderby=(ts_registratie));
+data mycas.crm3_pv(partition=(x)); *orderby=(ts_registratie));
 	set mycas.crm3_pv(orderby=(ts_registratie));
 	length x $2;
-	x = strip(put(mod(ts_registratie, input(&nworkers,12.)),$1.));
-	by ts_registratie;
+	x = strip(put(mod(ts_registratie, input(&nworkers,12.)), $2.));
+	by ts_registratie; /* It is not necessary for the input data set to be sorted ifrst */
 	if first.ts_registratie then output; /* Only output first observation of non-unique ones.; */
 run;
 
@@ -49,6 +49,11 @@ data mycas.crm3plusKeysKeyCols(drop=ts_be ts_ei x matm2start matm2end);
   		set work.matm2(firstobs=pointer obs=pointer+1); /* Is point=pointer possible? */
   		if ts_be <= ts_registratie <= ts_ei then output; end;
  	end;
+run;
+
+/* Save the join result */
+proc casutil incaslib="casuser" outcaslib="casuser";
+	save casdata="crm3plusKeysKeyCols" replace;
 run;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
