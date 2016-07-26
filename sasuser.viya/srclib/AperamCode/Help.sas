@@ -13,9 +13,28 @@ run;
 
 proc print data=mylib.skp1_pv(firstobs=1000 obs=1000); run;
 
-proc univariate data=mylib.skp1_pv(keep=d524 d525 d526) noprint;
-	histogram d:;
+data work.test;
+	retain count 0;
+	set mylib.skp1_pv(obs=100000 keep=d382 d433) end=last;
+	if d324 ge 200 then count = count + bxor(d382,d433);
+	if last then output;
+	keep count;
 run;
+
+ods listing gpath="/home/sastest/png";
+proc sgplot data=mylib.skp1_pv(keep=d524);
+	title "Histogram of blauwwaarde";
+	histogram d524;
+run;
+proc sgplot data=mylib.skp1_pv(keep=d525);
+	title "Histogram of corr(blauwwaarde)";
+	histogram d525;
+run;
+proc sgplot data=mylib.skp1_pv(keep=d526);
+	title "Histogram of grad(blauwwaarde)";
+	histogram d526;
+run;
+quit;
 
 proc contents data=mylib.matm2; run;
 
