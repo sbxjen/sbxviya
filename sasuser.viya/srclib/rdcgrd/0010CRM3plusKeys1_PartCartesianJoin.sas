@@ -20,13 +20,13 @@ data mycas.matm2(duplicate=yes);
 	drop a_dch ln_pr;
 run;
 
-%let nworkers=%sysfunc(getsessopt(mysess, nWorkers)); /* 100 */
+%let nworkers=%sysfunc(getsessopt(mysess, nworkers)); /* 100 */
 %put &nworkers=;
 
 data mycas.crm3_pv(partition=(x)); /* orderby=(ts_registratie)) not longer needed */;
 	set mycas.crm3_pv(orderby=(ts_registratie));
 	length x $2;
-	x = strip(put(mod(ts_registratie, input(&nworkers,12.)), $2.));
+	x = strip(put(mod(ts_registratie,&nworkers.),2.));
 	by ts_registratie; /* It is not necessary for the input data set to be sorted ifrst */
 	if first.ts_registratie then output; /* Only output first observation of non-unique ones.; */
 run;
