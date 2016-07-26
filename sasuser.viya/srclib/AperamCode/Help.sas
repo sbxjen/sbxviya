@@ -13,12 +13,8 @@ run;
 
 proc print data=mylib.skp1_pv(firstobs=1000 obs=1000); run;
 
-data work.test;
-	retain count 0;
-	set mylib.skp1_pv(obs=100000 keep=d382 d433) end=last;
-	if d324 ge 200 then count = count + bxor(d382,d433);
-	if last then output;
-	keep count;
+proc freq data=mylib.skp1_pv(keep=d382 d433 where=( ge 200));
+	tables d382 * d433;
 run;
 
 ods listing gpath="/home/sastest/png";
@@ -39,3 +35,7 @@ quit;
 proc contents data=mylib.matm2; run;
 
 proc print data=mylib.matm2(obs=1); run; 
+
+data _null_;
+	if 0 then put "It was true";
+run;
