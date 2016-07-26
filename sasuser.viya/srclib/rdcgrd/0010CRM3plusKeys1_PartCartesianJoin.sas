@@ -42,7 +42,7 @@ data mycas.matm2index duplicate=yes;
 	set work.matm2index;
 run;
  
-data mycas.crm3plusKeysKeyCols(drop=ts_be ts_ei x matm2start matm2end);
+data mycas.crm3plusKeysKeyCols(drop=x matm2start matm2end);
 	if _n_ = 1 then set mycas.matm2index;
  	set mycas.crm3_pv;
  	do pointer = matm2start to matm2end;
