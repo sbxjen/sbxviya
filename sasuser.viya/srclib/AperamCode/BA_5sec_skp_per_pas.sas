@@ -58,8 +58,7 @@ if ts_registratie LE &ts_last then delete;
 
 skp_bandsnelheid = d324;
 skp_pasnr = d421;
-skp_mode_pol = d382;
-if d457 = 0 then skp_mode_insp=1; else skp_mode_insp=0;
+skp_mode_pol = d382;if d457 = 0 then skp_mode_insp=1; else skp_mode_insp=0;
 skp_mode_wls=d433;
 skp_LE_H1 = d325;
 skp_LE_H2 = d326;

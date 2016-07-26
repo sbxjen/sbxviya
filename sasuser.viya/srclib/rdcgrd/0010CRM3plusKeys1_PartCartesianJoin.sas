@@ -1,13 +1,13 @@
 /* Make the connection to CAS */
-%include "/home/sasuser/sbxviya/sasuser.viya/srclib/rdcgrd/0000Connect2CAS.sas";
+%include "/home/sasuser/sbxviya/sasuser.viya/srclib/rdcgrd/0000ConnectToCAS.sas";
 
-%let viyadir = "/tmp/viya/";
+%let viyadir = /tmp/viya/;
 
 /* Load client-side tables (In memory) on CASHOST */
 /* This could take a while. */
-proc casutil outcaslib="sasuser";
-	load data="&viyadir./matm2.sas7bdat" casout="matm2";
-	load data="&viyadir./crm3_pv.sas7bdat" casout="crm3_pv";
+proc casutil outcaslib="casuser";
+	*load file="&viyadir./matm2.sas7bdat" casout="matm2";
+	load file="&viyadir./crm3_pv_be.sas7bdat" casout="crm3_pv";
 run;
 
 /* Measure real time */
@@ -20,10 +20,10 @@ data mycas.matm2(duplicate=yes);
 	drop a_dch ln_pr;
 run;
 
-%let nworkers=%sysfunc(getsessopt("mysess", "nworkers")); /* 100 */
+%let nworkers=%sysfunc(getsessopt(mysess, nWorkers)); /* 100 */
 %put &nworkers=;
 
-data mycas.crm3_pv(partition=(x)); *orderby=(ts_registratie));
+data mycas.crm3_pv(partition=(x)); /* orderby=(ts_registratie)) not longer needed */;
 	set mycas.crm3_pv(orderby=(ts_registratie));
 	length x $2;
 	x = strip(put(mod(ts_registratie, input(&nworkers,12.)), $2.));
@@ -38,7 +38,7 @@ data _null_;
 run;
 
 data work.matm2index; matm2start=1; matm2end=&lookupnobs.; output; run;
-data mycas.matm2index duplicate=yes;
+data mycas.matm2index(duplicate=yes);
 	set work.matm2index;
 run;
  
