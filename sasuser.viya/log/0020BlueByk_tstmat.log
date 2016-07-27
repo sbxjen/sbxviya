@@ -1,0 +1,140 @@
+1                                                          The SAS System                             13:55 Wednesday, July 27, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+1          *;
+2          libname mysas "/tmp/viya/";
+NOTE: Libref MYSAS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname myownsas "/tmp/v94/";
+NOTE: Libref MYOWNSAS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          /* Measure real time */
+7          options fullstimer;
+8          %let t = %sysfunc(datetime());
+9          
+10         /* Blue BY k_tstmat */
+11         proc freq data=myownsas.skp1allplusKeys(keep= k_tstmat);
+2                                                          The SAS System                             13:55 Wednesday, July 27, 2016
+
+12         	tables k_tstmat;
+13         run;
+
+NOTE: There were 8071189 observations read from the data set MYOWNSAS.SKP1ALLPLUSKEYS.
+NOTE: The PROCEDURE FREQ printed page 1.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           20.56 seconds
+      user cpu time       1.19 seconds
+      system cpu time     19.38 seconds
+      memory              3315.12k
+      OS Memory           9892.00k
+      Timestamp           27/07/2016 01:56:18 PM
+      Step Count                        1  Switch Count  1
+      Page Faults                       0
+      Page Reclaims                     1867
+      Page Swaps                        0
+      Voluntary Context Switches        2
+      Involuntary Context Switches      33
+      Block Input Operations            0
+      Block Output Operations           136
+      
+
+14         ods listing gpath="/home/sastest/png";
+15         title "Histogram of Blauwwaarde by k_tstmat";
+16         proc univariate data=myownsas.skp1allplusKeys(keep=d524 k_tstmat where=(k_tstmat like '2B%')) noprint;
+17         	class k_tstmat;
+18         	histogram d524 / nrows = 2;
+19         run;
+
+WARNING: Font Albany AMT/bo could not be used.
+         Font SIMULATE substituted for font Albany AMT/bo.
+WARNING: The specified value of 37.9896 inches for HSIZE= is larger than 8.6771 inches which is the maximum for the device Xcolor. 
+         HSIZE is ignored.
+WARNING: The specified value of 11.8125 inches for VSIZE= is larger than 5.4043 inches which is the maximum for the device Xcolor. 
+         VSIZE is ignored.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           39:20.32
+      user cpu time       9.50 seconds
+      system cpu time     23.71 seconds
+      memory              9669.78k
+      OS Memory           19400.00k
+      Timestamp           27/07/2016 02:35:38 PM
+      Step Count                        2  Switch Count  47473
+      Page Faults                       0
+      Page Reclaims                     5540
+      Page Swaps                        0
+      Voluntary Context Switches        142889
+      Involuntary Context Switches      74
+      Block Input Operations            0
+      Block Output Operations           180816
+      
+
+20         title;
+21         
+22         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+### 2380.89460015296
+23         
+24         /* end of program */
+3                                                          The SAS System                             13:55 Wednesday, July 27, 2016
+
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           39:40.91
+      user cpu time       10.72 seconds
+      system cpu time     43.10 seconds
+      memory              17624.65k
+      OS Memory           19400.00k
+      Timestamp           27/07/2016 02:35:38 PM
+      Step Count                        2  Switch Count  94962
+      Page Faults                       0
+      Page Reclaims                     13087
+      Page Swaps                        0
+      Voluntary Context Switches        142948
+      Involuntary Context Switches      110
+      Block Input Operations            0
+      Block Output Operations           180984
+      

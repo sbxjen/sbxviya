@@ -1,0 +1,15 @@
+                                                           The SAS System                         13:55 Wednesday, July 27, 2016   1
+
+                                                         The FREQ Procedure
+
+                                                             K_TSTMAT
+ 
+                                                                        Cumulative    Cumulative
+                                   K_TSTMAT    Frequency     Percent     Frequency      Percent
+                                   -------------------------------------------------------------
+                                   2B           1628484       20.18       1628484        20.18  
+                                   2BA          6076904       75.29       7705388        95.47  
+                                   2D             54324        0.67       7759712        96.14  
+                                   2DA           310663        3.85       8070375        99.99  
+                                   2DT              229        0.00       8070604        99.99  
+                                   HRAP             585        0.01       8071189       100.00  
