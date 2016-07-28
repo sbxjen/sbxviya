@@ -3,10 +3,26 @@
 
 %let viyadir = /tmp/viya/;
 
+/*
+ ***
+ ALTERNATIVE: Load client-side table (In memory) directly from CASHOST
+ ***
+*/
+%let v94dir = /tmp/v94/;
+proc casutil outcaslib="casuser";
+	load file="&v94dir./crm3allpluskeys.sas7bdat" casout="crm3";
+run;
+
+/* end of program */
+
+/*
+ ***
+ */
+
 /* Load client-side tables (In memory) on CASHOST */
 /* This could take a while. */
 proc casutil outcaslib="casuser";
-	*load file="&viyadir./matm2.sas7bdat" casout="matm2";
+	load file="&viyadir./matm2.sas7bdat" casout="matm2";
 	load file="&viyadir./crm3_pv_be.sas7bdat" casout="crm3_pv";
 run;
 
@@ -20,19 +36,19 @@ data mycas.matm2(duplicate=yes);
 	drop a_dch ln_pr;
 run;
 
-%let nworkers=%sysfunc(getsessopt(mysess, nworkers)); /* 100 */
+%let nworkers=%sysfunc(getsessopt(mysess,nworkers)); /* 100 */
 %put &nworkers=;
 
 data mycas.crm3_pv(partition=(x)); /* orderby=(ts_registratie)) not longer needed */;
-	set mycas.crm3_pv(orderby=(ts_registratie));
 	length x $2;
+	set mycas.crm3_pv;*(orderby=(ts_registratie)); /*  NOTE: Partitioning and ordering information is only relevant for output data sets. */
 	x = strip(put(mod(ts_registratie,&nworkers.),2.));
-	by ts_registratie; /* It is not necessary for the input data set to be sorted ifrst */
+	by ts_registratie; /* It is not necessary for the input data set to be sorted first */
 	if first.ts_registratie then output; /* Only output first observation of non-unique ones.; */
 run;
 
 data _null_;
-	if 0 then set mycas.matm2 nobs=lookupnobs;
+	if 0  then set mycas.matm2 nobs=lookupnobs;
  	call symput('lookupnobs', strip(put(lookupnobs,12.))); /* Highly efficient way to count nobs without reading a single observation. */
 	stop; 
 run;
@@ -46,7 +62,7 @@ data mycas.crm3plusKeysKeyCols(drop=x matm2start matm2end);
 	if _n_ = 1 then set mycas.matm2index;
  	set mycas.crm3_pv;
  	do pointer = matm2start to matm2end;
-  		set work.matm2(firstobs=pointer obs=pointer+1); /* Is point=pointer possible? */
+  		set work.matm2(point=pointer); /* Invalid option name POINT. */
   		if ts_be <= ts_registratie <= ts_ei then output; end;
  	end;
 run;
