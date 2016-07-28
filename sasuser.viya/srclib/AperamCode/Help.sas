@@ -1,6 +1,8 @@
 libname mylib "/tmp/viya/";
 
-proc print data=mylib.skp1_sigdef; run;
+proc print data=mylib.skp1_sigdef; 
+	*where signaal contains 'op';
+run;
 
 data work.test;
 	retain nzero count 0;
@@ -35,7 +37,3 @@ quit;
 proc contents data=mylib.matm2; run;
 
 proc print data=mylib.matm2(obs=1); run; 
-
-data _null_;
-	if 0 then put "It was true";
-run;

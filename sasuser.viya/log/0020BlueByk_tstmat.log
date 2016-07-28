@@ -1,5 +1,10 @@
-1                                                          The SAS System                             13:55 Wednesday, July 27, 2016
+1                                                          The SAS System                             17:13 Wednesday, July 27, 2016
 
+NOTE: Unable to open SASUSER.REGSTRY. WORK.REGSTRY will be opened instead.
+NOTE: All registry changes will be lost at the end of the session.
+
+WARNING: Unable to copy SASUSER registry to WORK registry. Because of this, you will not see registry customizations during this 
+         session.
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
       Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
@@ -38,8 +43,8 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           0.01 seconds
-      cpu time            0.01 seconds
+      real time           6.01 seconds
+      cpu time            0.03 seconds
       
 1          *;
 2          libname mysas "/tmp/viya/";
@@ -52,89 +57,252 @@ NOTE: Libref MYOWNSAS was successfully assigned as follows:
       Physical Name: /tmp/v94
 4          *;
 5          
-6          /* Measure real time */
-7          options fullstimer;
-8          %let t = %sysfunc(datetime());
-9          
-10         /* Blue BY k_tstmat */
-11         proc freq data=myownsas.skp1allplusKeys(keep= k_tstmat);
-2                                                          The SAS System                             13:55 Wednesday, July 27, 2016
+6          proc contents data=myownsas.skp1allplusKeys; run;
+2                                                          The SAS System                             17:13 Wednesday, July 27, 2016
 
-12         	tables k_tstmat;
-13         run;
+
+NOTE: PROCEDURE CONTENTS used (Total process time):
+      real time           5.02 seconds
+      cpu time            0.06 seconds
+      
+NOTE: The PROCEDURE CONTENTS printed pages 1-12.
+
+7          
+8          /* Measure real time */
+9          options fullstimer;
+10         %let t = %sysfunc(datetime());
+11         
+12         /* k_tstmat */
+13         proc freq data=myownsas.skp1allplusKeys(keep= k_tstmat);
+14         	tables k_tstmat;
+15         run;
 
 NOTE: There were 8071189 observations read from the data set MYOWNSAS.SKP1ALLPLUSKEYS.
-NOTE: The PROCEDURE FREQ printed page 1.
+NOTE: The PROCEDURE FREQ printed page 13.
 NOTE: PROCEDURE FREQ used (Total process time):
-      real time           20.56 seconds
-      user cpu time       1.19 seconds
-      system cpu time     19.38 seconds
-      memory              3315.12k
-      OS Memory           9892.00k
-      Timestamp           27/07/2016 01:56:18 PM
-      Step Count                        1  Switch Count  1
-      Page Faults                       0
-      Page Reclaims                     1867
+      real time           12:54.47
+      user cpu time       1.55 seconds
+      system cpu time     25.24 seconds
+      memory              1324.25k
+      OS Memory           10404.00k
+      Timestamp           27/07/2016 05:26:42 PM
+      Step Count                        2  Switch Count  0
+      Page Faults                       10
+      Page Reclaims                     441
       Page Swaps                        0
-      Voluntary Context Switches        2
-      Involuntary Context Switches      33
-      Block Input Operations            0
+      Voluntary Context Switches        15316
+      Involuntary Context Switches      61
+      Block Input Operations            39607896
+      Block Output Operations           144
+      
+
+16         
+17         /* first coil with nonzero d524 */
+18         data _null_;
+19         	set myownsas.skp1allplusKeys(keep=cl_n d524);
+20         	if not d524=. then do;
+21         		call symput('coil',cl_n);
+22         		stop;
+23         	end;
+24         run;
+
+NOTE: There were 8071189 observations read from the data set MYOWNSAS.SKP1ALLPLUSKEYS.
+NOTE: DATA statement used (Total process time):
+      real time           6:02.65
+      user cpu time       1.12 seconds
+      system cpu time     23.10 seconds
+      memory              1399.78k
+      OS Memory           11172.00k
+      Timestamp           27/07/2016 05:32:45 PM
+      Step Count                        3  Switch Count  0
+      Page Faults                       10
+      Page Reclaims                     686
+      Page Swaps                        0
+3                                                          The SAS System                             17:13 Wednesday, July 27, 2016
+
+      Voluntary Context Switches        9061
+      Involuntary Context Switches      99
+      Block Input Operations            22594048
+      Block Output Operations           0
+      
+
+WARNING: Apparent symbolic reference COIL not resolved.
+25         %put &coil.;
+&coil.
+26         
+27         data work.coil;
+28         	set myownsas.skp1allplusKeys(keep=cl_n ts_registratie d524 d324 d382);
+29         	where cl_n=put(&coil.,8.);
+                           _
+                           22
+                           76
+WARNING: Apparent symbolic reference COIL not resolved.
+ERROR: Syntax error while parsing WHERE clause.
+ERROR 22-322: Syntax error, expecting one of the following: a name, a quoted string, a numeric constant, a datetime constant, 
+              a missing value, (, +, -, INPUT, NOT, PUT, ^, ~.  
+
+ERROR 76-322: Syntax error, statement will be ignored.
+
+30         run;
+
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: SAS set option OBS=0 and will continue to check statements. This might cause NOTE: No observations in data set.
+WARNING: The data set WORK.COIL may be incomplete.  When this step was stopped there were 0 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4.60 seconds
+      user cpu time       0.01 seconds
+      system cpu time     0.01 seconds
+      memory              816.93k
+      OS Memory           11172.00k
+      Timestamp           27/07/2016 05:32:51 PM
+      Step Count                        4  Switch Count  0
+      Page Faults                       14
+      Page Reclaims                     314
+      Page Swaps                        0
+      Voluntary Context Switches        19
+      Involuntary Context Switches      0
+      Block Input Operations            5552
       Block Output Operations           136
       
 
-14         ods listing gpath="/home/sastest/png";
-15         title "Histogram of Blauwwaarde by k_tstmat";
-16         proc univariate data=myownsas.skp1allplusKeys(keep=d524 k_tstmat where=(k_tstmat like '2B%')) noprint;
-17         	class k_tstmat;
-18         	histogram d524 / nrows = 2;
-19         run;
+31         
+32         /* Summary statistics for d524 */
+33         *proc univariate data=myownsas.skp1allplusKeys(keep=cl_n dch_n bew_vn d524 k_tstmat where=(k_tstmat like '2B%' and not
+33       ! d524=.) firstobs=8000000 obs=8010000);
+34         *	by notsorted cl_n dch_n bew_vn;
+35         *	var d524;
+36         *	output mean=_d524_mean;
+37         *run;
+38         
+39         /* Plot Blauwwaarde for first coil with nonzero d524 only */
+40         ods listing close;
+41         
+42         ods graphics on /
+4                                                          The SAS System                             17:13 Wednesday, July 27, 2016
 
-WARNING: Font Albany AMT/bo could not be used.
-         Font SIMULATE substituted for font Albany AMT/bo.
-WARNING: The specified value of 37.9896 inches for HSIZE= is larger than 8.6771 inches which is the maximum for the device Xcolor. 
-         HSIZE is ignored.
-WARNING: The specified value of 11.8125 inches for VSIZE= is larger than 5.4043 inches which is the maximum for the device Xcolor. 
-         VSIZE is ignored.
-NOTE: PROCEDURE UNIVARIATE used (Total process time):
-      real time           39:20.32
-      user cpu time       9.50 seconds
-      system cpu time     23.71 seconds
-      memory              9669.78k
-      OS Memory           19400.00k
-      Timestamp           27/07/2016 02:35:38 PM
-      Step Count                        2  Switch Count  47473
+43         	height=1024px width=1280px
+44         	border=off;
+45         ods html file="/home/sastest/html/TimeSeries-Blauwwaarde.html" style=HTMLBlue gpath="/home/sastest/html";
+NOTE: Writing HTML Body file: /home/sastest/html/TimeSeries-Blauwwaarde.html
+WARNING: Apparent symbolic reference COIL not resolved.
+46         
+47         title "Coil &coil.";
+48         
+49         proc sgplot data=work.coil;
+50         	series x=ts_registratie y=d524 / lineattrs=(color=red);
+51         	xaxis grid label="t";
+52         	yaxis grid label="Blauwwaarde";
+53         run;
+
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE SGPLOT used (Total process time):
+      real time           0.00 seconds
+      user cpu time       0.00 seconds
+      system cpu time     0.00 seconds
+      memory              221.00k
+      OS Memory           13472.00k
+      Timestamp           27/07/2016 05:33:23 PM
+      Step Count                        5  Switch Count  0
       Page Faults                       0
-      Page Reclaims                     5540
+      Page Reclaims                     71
       Page Swaps                        0
-      Voluntary Context Switches        142889
-      Involuntary Context Switches      74
+      Voluntary Context Switches        0
+      Involuntary Context Switches      0
       Block Input Operations            0
-      Block Output Operations           180816
+      Block Output Operations           0
       
 
-20         title;
-21         
-22         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-### 2380.89460015296
-23         
-24         /* end of program */
-3                                                          The SAS System                             13:55 Wednesday, July 27, 2016
 
+54         proc sgplot data=work.coil;
+55         	series x=ts_registratie y=d324 / lineattrs=(color=blue);
+56         	xaxis grid label="t";
+57         	yaxis grid label="Bandsnelheid";
+58         run;
+
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE SGPLOT used (Total process time):
+      real time           0.00 seconds
+      user cpu time       0.00 seconds
+      system cpu time     0.00 seconds
+      memory              222.87k
+      OS Memory           13472.00k
+      Timestamp           27/07/2016 05:33:23 PM
+      Step Count                        6  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     8
+      Page Swaps                        0
+      Voluntary Context Switches        0
+      Involuntary Context Switches      0
+      Block Input Operations            0
+      Block Output Operations           0
+      
+
+
+5                                                          The SAS System                             17:13 Wednesday, July 27, 2016
+
+59         proc sgplot data=work.coil;
+60         	band x=ts_registratie lower=0 upper=d382 / fillattrs=(color=blue);
+61         	xaxis label="t";
+62         	yaxis grid label="Mode Polijsten";
+63         run;
+
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: PROCEDURE SGPLOT used (Total process time):
+      real time           0.00 seconds
+      user cpu time       0.00 seconds
+      system cpu time     0.00 seconds
+      memory              221.00k
+      OS Memory           13472.00k
+      Timestamp           27/07/2016 05:33:23 PM
+      Step Count                        7  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     9
+      Page Swaps                        0
+      Voluntary Context Switches        0
+      Involuntary Context Switches      0
+      Block Input Operations            0
+      Block Output Operations           0
+      
+64         
+65         title;
+66         
+67         ods html close;
+68         
+69         /*ods html file="/home/sastest/html/Histogram-Blauwwaarde.html" style=HTMLBlue gpath="/home/sastest/html";
+70         
+71         title "Per coil Blauwwaarde";
+72         
+73         proc sgplot data=work.coil;
+74         	histogram k_tstmat;
+75         	
+76         run;*/
+77         
+78         ods listing;
+79         
+80         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+### 1177.86388993263
+81         
+82         /* end of program */
+
+
+ERROR: Errors printed on page 3.
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           39:40.91
-      user cpu time       10.72 seconds
-      system cpu time     43.10 seconds
-      memory              17624.65k
-      OS Memory           19400.00k
-      Timestamp           27/07/2016 02:35:38 PM
-      Step Count                        2  Switch Count  94962
-      Page Faults                       0
-      Page Reclaims                     13087
+      real time           19:49.83
+      user cpu time       2.90 seconds
+      system cpu time     48.39 seconds
+      memory              12459.31k
+      OS Memory           13472.00k
+      Timestamp           27/07/2016 05:33:26 PM
+      Step Count                        7  Switch Count  24
+      Page Faults                       100
+      Page Reclaims                     10656
+6                                                          The SAS System                             17:13 Wednesday, July 27, 2016
+
       Page Swaps                        0
-      Voluntary Context Switches        142948
-      Involuntary Context Switches      110
-      Block Input Operations            0
-      Block Output Operations           180984
+      Voluntary Context Switches        24619
+      Involuntary Context Switches      164
+      Block Input Operations            62260360
+      Block Output Operations           824
       

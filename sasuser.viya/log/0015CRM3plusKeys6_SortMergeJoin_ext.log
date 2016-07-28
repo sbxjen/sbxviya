@@ -1,4 +1,4 @@
-1                                                          The SAS System                             14:36 Wednesday, July 27, 2016
+1                                                          The SAS System                             17:12 Wednesday, July 27, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -38,8 +38,8 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           0.02 seconds
-      cpu time            0.02 seconds
+      real time           1.07 seconds
+      cpu time            0.03 seconds
       
 1          *;
 2          libname mysas "/tmp/viya/";
@@ -58,7 +58,7 @@ NOTE: Libref MYOWNSAS was successfully assigned as follows:
 9          
 10         /* Sort matm2 by ts_be */
 11         proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr
-2                                                          The SAS System                             14:36 Wednesday, July 27, 2016
+2                                                          The SAS System                             17:12 Wednesday, July 27, 2016
 
 12         		where=(a_dch=0 and ln_pr='CRM3'))
 13         		out=myownsas.matm2(drop=a_dch ln_pr); /* All unique, cf. 0005AreMATm2KeysUnique.sas */
@@ -70,19 +70,19 @@ NOTE: There were 35783 observations read from the data set MYSAS.MATM2.
       WHERE (a_dch=0) and (ln_pr='CRM3');
 NOTE: The data set MYOWNSAS.MATM2 has 35783 observations and 5 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           0.69 seconds
+      real time           0.78 seconds
       user cpu time       0.03 seconds
       system cpu time     0.07 seconds
       memory              5920.28k
       OS Memory           12988.00k
-      Timestamp           27/07/2016 02:36:07 PM
+      Timestamp           27/07/2016 05:12:05 PM
       Step Count                        1  Switch Count  0
-      Page Faults                       2
-      Page Reclaims                     1557
+      Page Faults                       6
+      Page Reclaims                     1553
       Page Swaps                        0
-      Voluntary Context Switches        79
+      Voluntary Context Switches        74
       Involuntary Context Switches      0
-      Block Input Operations            166424
+      Block Input Operations            167472
       Block Output Operations           3480
       
 
@@ -99,26 +99,26 @@ NOTE: There were 1480555 observations read from the data set MYSAS.CRM3_PV_2015Q
 NOTE: There were 3112977 observations read from the data set MYSAS.CRM3_PV.
 NOTE: The data set MYOWNSAS.CRM3_PV_ALL has 9026889 observations and 403 variables.
 NOTE: DATA statement used (Total process time):
-      real time           9:46.37
-      user cpu time       7.55 seconds
-      system cpu time     46.07 seconds
-      memory              3781.93k
+      real time           13:01.61
+      user cpu time       7.62 seconds
+      system cpu time     48.40 seconds
+      memory              3782.96k
       OS Memory           11960.00k
-      Timestamp           27/07/2016 02:45:54 PM
+      Timestamp           27/07/2016 05:25:07 PM
       Step Count                        2  Switch Count  0
-      Page Faults                       2
-      Page Reclaims                     1069
+      Page Faults                       5
+      Page Reclaims                     1066
       Page Swaps                        0
-      Voluntary Context Switches        19641
-      Involuntary Context Switches      145
-      Block Input Operations            57777272
+      Voluntary Context Switches        18441
+      Involuntary Context Switches      164
+      Block Input Operations            57774288
       Block Output Operations           57772560
       
 
 21         
 22         /* Sort crm3_pv by ts_registratie */
 23         proc sort data=myownsas.crm3_pv_all;
-3                                                          The SAS System                             14:36 Wednesday, July 27, 2016
+3                                                          The SAS System                             17:12 Wednesday, July 27, 2016
 
 24         	by ts_registratie;	
 25         run;
@@ -126,19 +126,19 @@ NOTE: DATA statement used (Total process time):
 NOTE: There were 9026889 observations read from the data set MYOWNSAS.CRM3_PV_ALL.
 NOTE: The data set MYOWNSAS.CRM3_PV_ALL has 9026889 observations and 403 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           21:13.93
-      user cpu time       1:13.55
-      system cpu time     1:53.26
-      memory              1057371.62k
+      real time           24:52.55
+      user cpu time       1:13.03
+      system cpu time     1:55.78
+      memory              1057371.46k
       OS Memory           1067236.00k
-      Timestamp           27/07/2016 03:07:08 PM
+      Timestamp           27/07/2016 05:49:59 PM
       Step Count                        3  Switch Count  0
-      Page Faults                       10
-      Page Reclaims                     271366
+      Page Faults                       16
+      Page Reclaims                     269837
       Page Swaps                        0
-      Voluntary Context Switches        956012
-      Involuntary Context Switches      536
-      Block Input Operations            115467856
+      Voluntary Context Switches        920639
+      Involuntary Context Switches      634
+      Block Input Operations            115477112
       Block Output Operations           115545008
       
 
@@ -152,19 +152,19 @@ NOTE: PROCEDURE SORT used (Total process time):
 NOTE: There were 9026889 observations read from the data set MYOWNSAS.CRM3_PV_ALL.
 NOTE: The data set MYOWNSAS.CRM3_PV_ALL has 9026338 observations and 403 variables.
 NOTE: DATA statement used (Total process time):
-      real time           11:50.73
-      user cpu time       7.84 seconds
-      system cpu time     49.47 seconds
-      memory              1747.93k
+      real time           9:28.67
+      user cpu time       8.70 seconds
+      system cpu time     48.58 seconds
+      memory              1746.06k
       OS Memory           11688.00k
-      Timestamp           27/07/2016 03:18:59 PM
+      Timestamp           27/07/2016 05:59:28 PM
       Step Count                        4  Switch Count  0
-      Page Faults                       5
-      Page Reclaims                     335
+      Page Faults                       6
+      Page Reclaims                     358
       Page Swaps                        0
-      Voluntary Context Switches        17882
-      Involuntary Context Switches      130
-      Block Input Operations            57761880
+      Voluntary Context Switches        18541
+      Involuntary Context Switches      100
+      Block Input Operations            26109256
       Block Output Operations           57768976
       
 
@@ -178,7 +178,7 @@ NOTE: DATA statement used (Total process time):
 38         	end;
 39         	do while (ts_ei < ts_registratie);
 40         		set myownsas.matm2; /* ts_ei UP */
-4                                                          The SAS System                             14:36 Wednesday, July 27, 2016
+4                                                          The SAS System                             17:12 Wednesday, July 27, 2016
 
 41         	end;
 42         	do while (ts_registratie <= ts_ei);
@@ -193,42 +193,42 @@ NOTE: There were 35783 observations read from the data set MYOWNSAS.MATM2.
 NOTE: There were 9010973 observations read from the data set MYOWNSAS.CRM3_PV_ALL.
 NOTE: The data set MYOWNSAS.CRM3ALLPLUSKEYS has 7629412 observations and 408 variables.
 NOTE: DATA statement used (Total process time):
-      real time           8:57.84
-      user cpu time       6.66 seconds
-      system cpu time     43.21 seconds
-      memory              2104.59k
+      real time           4:25.73
+      user cpu time       6.95 seconds
+      system cpu time     38.46 seconds
+      memory              2103.21k
       OS Memory           11688.00k
-      Timestamp           27/07/2016 03:27:58 PM
+      Timestamp           27/07/2016 06:03:54 PM
       Step Count                        5  Switch Count  0
-      Page Faults                       6
-      Page Reclaims                     363
+      Page Faults                       4
+      Page Reclaims                     364
       Page Swaps                        0
-      Voluntary Context Switches        18748
-      Involuntary Context Switches      106
-      Block Input Operations            57685288
+      Voluntary Context Switches        18065
+      Involuntary Context Switches      96
+      Block Input Operations            6947024
       Block Output Operations           48828688
       
 
 48         
 49         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-### 3110.94305992126
+### 3110.95010995864
 50         
 51         /* end of program */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           51:50.96
-      user cpu time       1:35.65
-      system cpu time     4:12.09
-      memory              1063526.40k
+      real time           51:52.20
+      user cpu time       1:36.36
+      system cpu time     4:11.30
+      memory              1063527.28k
       OS Memory           1067236.00k
-      Timestamp           27/07/2016 03:27:58 PM
+      Timestamp           27/07/2016 06:03:55 PM
       Step Count                        5  Switch Count  16
-      Page Faults                       26
-      Page Reclaims                     280257
+      Page Faults                       117
+      Page Reclaims                     278725
       Page Swaps                        0
-      Voluntary Context Switches        1012437
-      Involuntary Context Switches      920
-      Block Input Operations            288858848
+      Voluntary Context Switches        975999
+      Involuntary Context Switches      997
+      Block Input Operations            206491072
       Block Output Operations           279918768
       

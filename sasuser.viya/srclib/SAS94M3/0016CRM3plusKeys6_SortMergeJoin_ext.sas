@@ -7,7 +7,7 @@ libname myownsas "/tmp/v94/";
 options fullstimer;
 %let t = %sysfunc(datetime());
 
-/* Sort matm2 by ts_be */
+/* Sort the resulting matm2 by ts_be */
 proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr 
 		where=(a_dch=0 and ln_pr='CRM3')) 
 		out=myownsas.matm2(drop=a_dch ln_pr); /* All unique, cf. 0005AreMATm2KeysUnique.sas */ 
