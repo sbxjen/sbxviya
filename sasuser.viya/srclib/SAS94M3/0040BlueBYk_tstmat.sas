@@ -1,5 +1,5 @@
 *;
-libname mysas "/tmp/viya/";
+libname mysas "/tmp/viya/" access=readonly;
 libname myownsas "/tmp/v94/";
 *;
 
@@ -24,7 +24,7 @@ run;
 %put &coil.;
 
 /* Summary statistics for d524 */
-proc univariate data=myownsas.skp1allplusKeys(where=(k_tstmat like '2B%'));
+proc univariate data=myownsas.skp1allplusKeys2(where=(k_tstmat like '2B%')) noprint;
 	by notsorted cl_n dch_n bew_vn k_tstmat d417 d418 ;
 	var d524;
 	output out=_skp1allplusKeys_meand524 mean=d524;
@@ -36,15 +36,14 @@ data work.coil;
 run;
 
 /* Plot Blauwwaarde for first coil with nonzero d524 only */
-ods listing close;
 
+ods _all_ close;
 ods graphics on /
-	height=1024px width=1280px
+	height=512px width=640px
 	border=off;
-ods html file="/home/sastest/html/TimeSeries-Blauwwaarde.html" style=HTMLBlue gpath="/home/sastest/html";
+ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="TimeSeries-Blauwwaarde.html" style=HTMLBlue;
 
 title "Coil &coil.";
-
 proc sgplot data=work.coil;
 	series x=ts_registratie y=d524 / lineattrs=(color=red);
 	xaxis grid label="t";
@@ -60,20 +59,37 @@ proc sgplot data=work.coil;
 	xaxis label="t";
 	yaxis grid label="Mode Polijsten";
 run;
-
 title;
 
-ods html close;
+ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="Histogram-Blauwwaarde.html" style=HTMLBlu;
 
-/*ods html file="/home/sastest/html/Histogram-Blauwwaarde.html" style=HTMLBlue gpath="/home/sastest/html";
-
+proc sort data=_skp1allplusKeys_meand524;
+	by k_tstmat;
+	*by d417 d418;
+run;
 title "Per coil Blauwwaarde";
+proc sgplot data=_skp1allplusKeys_meand524;
+	histogram d524;
+	density d524 / type=Normal;
+	by k_tstmat;
+	*by d417 d418;
+	xaxis values=(0.0 to 1.0 by 0.1) label='Blauwwaarde';
+run;
 
-proc sgplot data=work.coil;
-	histogram k_tstmat;
-	
-run;*/
+ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="BoxPlot-Blauwwaarde.html" style=HTMLBlue;
 
+proc sort data=_skp1allplusKeys_meand524;
+	by k_tstmat;
+	*by d417 d418;
+run;
+title "Per coil Blauwwaarde";
+proc sgplot data=_skp1allplusKeys_meand524;
+	vbox d524 / category=k_tstmat;
+	yaxis grid values=(0.0 to 1.0 by 0.1) label='Blauwwaarde';
+	xaxis display=(nolabel);
+run;
+
+ods html close;
 ods listing;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );

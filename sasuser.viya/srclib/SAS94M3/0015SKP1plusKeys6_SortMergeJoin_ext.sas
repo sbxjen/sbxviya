@@ -1,5 +1,5 @@
 *;
-libname mysas "/tmp/viya/";
+libname mysas "/tmp/viya/" access=readonly;
 libname myownsas "/tmp/v94/";
 *;
 
