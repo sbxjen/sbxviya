@@ -46,7 +46,7 @@ proc ds2;
 	data ousaslib.skp1allplusKeysplusCilinders(overwrite=yes);
 	method run();
 		set { select *
-			  from ousaslib.skp1allplusKeys2 a /* 2 = only with BLUE */
+			  from ousaslib.skp1allplusKeys a /* plusKeys2 = only with BLUE */
       		  left join ousaslib.skp_cilinders b
       		  on ( 
       		  		(b.ComponentDigits=a.d417 or b.ComponentDigits=a.d418)

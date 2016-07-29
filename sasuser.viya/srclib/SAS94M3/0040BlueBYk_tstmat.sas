@@ -1,37 +1,37 @@
 *;
-libname mysas "/tmp/viya/" access=readonly;
-libname myownsas "/tmp/v94/";
+libname insaslib "/tmp/viya/" access=readonly;
+libname ousaslib "/tmp/v94/";
 *;
 
 /* skp1allplusKeys2 should exist by now */
-proc contents data=myownsas.skp1allplusKeys2; run;
+proc contents data=ousaslib.skp1allplusKeys2; run;
 
 /* Measure real time */
 options fullstimer;
 %let t = %sysfunc(datetime());
 
 /* k_tstmat */
-proc freq data=myownsas.skp1allplusKeys2(keep=k_tstmat);
+proc freq data=ousaslib.skp1allplusKeys2(keep=k_tstmat);
 	tables k_tstmat;
 run;
 
 /* first coil with nonzero d524 only */
 data _null_;
-	set myownsas.skp1allplusKeys2(obs=1);
+	set ousaslib.skp1allplusKeys2(obs=1);
 	call symput('coil',cl_n);
 run;
 
 %put &coil.;
 
 /* Summary statistics for d524 */
-proc univariate data=myownsas.skp1allplusKeys2(where=(k_tstmat like '2B%')) noprint;
+proc univariate data=ousaslib.skp1allplusKeys2(where=(k_tstmat like '2B%')) noprint;
 	by notsorted cl_n dch_n bew_vn k_tstmat d417 d418 ;
 	var d524;
 	output out=_skp1allplusKeys_meand524 mean=d524;
 run;
 
 data work.coil;
-	set myownsas.skp1allplusKeys2(keep=cl_n ts_registratie d524 d324 d382);
+	set ousaslib.skp1allplusKeys2(keep=cl_n ts_registratie d524 d324 d382);
 	where cl_n=put(&coil.,8.);
 run;
 

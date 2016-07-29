@@ -9,8 +9,8 @@ options fullstimer;
 
 /* Sort matm2 by ts_be */
 proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn k_tstmat a_dch dl_n_lei dl_n_leu ln_pr 
-		where=(a_dch=0 and ln_pr='SKP1')) 
-		/* where=((dl_n_lei = dl_n_leu) and ln_pr='SKP1') */
+		/* where=(a_dch=0 and ln_pr='SKP1'))  */
+		where=((dl_n_lei = dl_n_leu) and (dl_n_bri = dl_n_bru) and ln_pr='SKP1')
 		out=myownsas.matm2(drop=a_dch ln_pr dl_n_lei dl_n_leu); /* All unique, cf. 0005AreMATm2KeysUnique.sas */ 
 	by ts_be ts_ei; /* The coils should have been processed in a non-overlapping way, so actually, ts_ei is obsolete here. */ 
 run;
@@ -18,7 +18,7 @@ run;
 /* Concatenate all skp1_pv* data sets */
 data myownsas.skp1_pv_all;
 	set mysas.skp1_pv_2015q1 mysas.skp1_pv_2015q2 mysas.skp1_pv_2015q3 mysas.skp1_pv_2015q4 mysas.skp1_pv;
-	/* UPDATE:not skp_pw_blauwwaarde = d524 = . */
+	/* UPDATE: not skp_pw_blauwwaarde = d524 = . */
 	where not d524=.;
 run;
 

@@ -1,3 +1,5 @@
+/* SEE ALSO: UPDATE in 0015SKP1plusKeys6_SortMergeJoin_ext.sas */
+
 *;
 libname mysas "/tmp/viya/";
 libname myownsas "/tmp/v94/";

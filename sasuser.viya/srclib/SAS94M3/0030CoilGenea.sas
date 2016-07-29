@@ -14,8 +14,8 @@ proc sort data=insaslib.matm2(keep=
 										ln_pr_vr ln_pr ln_pr_vl
 								)
 			out=work.mycoils;
-	*where cl_n = "50603615";
-	where cl_n in ("50603615", "50609621", "52010933");
+	where cl_n = "62312155";
+	*where cl_n in ("50603615", "50609621", "52010933");
 	by cl_n dch_n bew_vn;
 run;
 
@@ -28,12 +28,13 @@ data _null_;
 	file sascode;	
 run;
 
-/* Select a KEY to work with, e.g. from skp1allplusKeys (WHERE (a_dch=0)) */ 
+/* Select a KEY to work with, e.g. from skp1allplusKeys (WHERE (a_dch=0)), BUT ALSO WORKS FOR MOEDERS */ 
 data matm2OnlyThisCoil;
-	set work.mycoils(firstobs=8 obs=8 keep=cl_n dch_n_vr bew_vn);
+	set work.mycoils(firstobs=2 obs=2 keep=cl_n dch_n dch_n_vr bew_vn);
 	call symputx("_cl_n",		cl_n);
 	call symputx("_dch_n_vr",	dch_n_vr);
 	call symputx("_bew_vn",		bew_vn);
+	drop dch_n_vr;
 run;
 /* Select the coil corresponding with matm2OnlyThisCoil */
 proc sort 	data=insaslib.matm2(keep=cl_n dch_n bew_vn dch_n_vr dch_n_vl
