@@ -1,25 +1,27 @@
 *;
-libname mysas "/tmp/viya/";
+libname mysas "/tmp/viya/" access=readonly;
 libname myownsas "/tmp/v94/";
 *;
+
+proc contents data=mysas.matm2; run;
 
 /* Measure real time */
 options fullstimer;
 %let t = %sysfunc(datetime());
 
 /* Sort matm2 by ts_be */
-proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn k_tstmat a_dch dl_n_lei dl_n_leu ln_pr 
-		where=(a_dch=0 and ln_pr='SKP1')) 
-		/* where=((dl_n_lei = dl_n_leu) and ln_pr='SKP1') */
-		out=myownsas.matm2(drop=a_dch ln_pr dl_n_lei dl_n_leu); /* All unique, cf. 0005AreMATm2KeysUnique.sas */ 
+proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn k_tstmat a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru ln_pr 
+		/* where=(a_dch=0 and ln_pr='SKP1'))  */
+		where=((dl_n_lei = dl_n_leu) and (dl_n_bri = dl_n_bru) and ln_pr='SKP1'))
+		out=myownsas.matm2(drop=a_dch ln_pr dl_n_lei dl_n_leu dl_n_bri dl_n_bru); /* All unique, cf. 0005AreMATm2KeysUnique.sas */ 
 	by ts_be ts_ei; /* The coils should have been processed in a non-overlapping way, so actually, ts_ei is obsolete here. */ 
 run;
 
 /* Concatenate all skp1_pv* data sets */
 data myownsas.skp1_pv_all;
 	set mysas.skp1_pv_2015q1 mysas.skp1_pv_2015q2 mysas.skp1_pv_2015q3 mysas.skp1_pv_2015q4 mysas.skp1_pv;
-	/* UPDATE:not skp_pw_blauwwaarde = d524 = . */
-	where not d524=.;
+	/* UPDATE: not skp_pw_blauwwaarde = d524 = . */
+	where not (d524=.);
 run;
 
 /* Sort skp1_pv by ts_registratie */
@@ -32,8 +34,9 @@ data myownsas.skp1_pv_all;
 	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005Areskp1KeysUnique.sas */  
 run;
 
-/* At this point, both matm2 and skp1_pv_all should be sorted by timestamp.
-   Obs in matm2 start in 2011, those in skp1_pv_all start in 2015. */
+/* At this point, both obs in matm2 and skp1_pv_all should be sorted by timestamp.
+   Obs in matm2 start in 2011, those in skp1_pv_all start in 2015.
+   Obs in matm2 can only be mothers. */
 data myownsas.skp1allplusKeys;
 	if _n_ = 1 then do; 
 		set myownsas.skp1_pv_all;

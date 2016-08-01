@@ -1,0 +1,124 @@
+1                                                          The SAS System                              14:00 Thursday, July 28, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.07 seconds
+      cpu time            0.03 seconds
+      
+1          *;
+2          libname mysas "/tmp/viya/";
+NOTE: Libref MYSAS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname myownsas "/tmp/v94/";
+NOTE: Libref MYOWNSAS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          proc contents data=myownsas.skp1allplusKeys2;
+7          
+8          %let inputdswemptycols=myownsas.skp1allplusKeys2;
+9          
+
+NOTE: The PROCEDURE CONTENTS printed pages 1-12.
+2                                                          The SAS System                              14:00 Thursday, July 28, 2016
+
+NOTE: PROCEDURE CONTENTS used (Total process time):
+      real time           0.19 seconds
+      cpu time            0.07 seconds
+      
+
+10         data _null_;
+11         	set &inputdswemptycols. end=last;
+12         	array _n _numeric_   _dumn;
+13         	array _c _character_ _dumc;
+14         	array _nn{3000} _temporary_; /*  temporary array: array elements are retained automatically */
+15         	array _nc{3000} _temporary_; /*  temporary array: array elements are retained automatically */
+16         	do i = 1 to dim(_n)-1;       /* -1 because of dummy _dumn */
+17             	if not _nn{i} and not missing(_n{i}) then _nn{i} = 1;
+18             end;
+19         	do i = 1 to dim(_c)-1;       /* -1 because of dummy _dumc */
+20             	if not _nc{i} and not missing(_c{i}) then _nc{i} = 1;
+21             end;
+22         	length _vars $6000;
+23         	if last then do;
+24         	    do i = 1 to dim(_n)-1;
+25         	        if not _nn{i} then _vars = catx(" ", _vars, vname(_n{i}));
+26         	    end;
+27         	    do i = 1 to dim(_c)-1;
+28         	        if not _nc{i} then _vars = catx(" ", _vars, vname(_c{i}));
+29         	    end;
+30         	    call symputx("droplist", _vars);
+31             end;
+32         run;
+
+NOTE: There were 5739808 observations read from the data set MYOWNSAS.SKP1ALLPLUSKEYS2.
+NOTE: DATA statement used (Total process time):
+      real time           2:47.34
+      cpu time            2:47.37
+      
+
+33         
+34         %put &=droplist.;
+DROPLIST=d514 d515 d516 d517 d552 d553 d554 d555 d556 d557 d558 d559 d560 d561 d562 d563 d564 d576 d577 d578 d579 d580
+35         
+36         data &inputdswemptycols.;
+37         	_dummy = 0; /* In case the drop list is empty */
+38         	set &inputdswemptycols.;
+39         	drop &droplist _dummy;
+40         run;
+
+NOTE: There were 5739808 observations read from the data set MYOWNSAS.SKP1ALLPLUSKEYS2.
+NOTE: The data set MYOWNSAS.SKP1ALLPLUSKEYS2 has 5739808 observations and 568 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2:39.67
+      cpu time            48.84 seconds
+      
+
+41         
+42         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           5:28.43
+3                                                          The SAS System                              14:00 Thursday, July 28, 2016
+
+      cpu time            3:36.32
+      

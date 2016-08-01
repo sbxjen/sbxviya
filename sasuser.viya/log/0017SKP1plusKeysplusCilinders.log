@@ -1,0 +1,105 @@
+1                                                          The SAS System                              17:12 Thursday, July 28, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.93 seconds
+      cpu time            0.04 seconds
+      
+1          *;
+2          libname mysas "/tmp/viya/" access=readonly;
+NOTE: Libref MYSAS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname myownsas "/tmp/v94/";
+NOTE: Libref MYOWNSAS was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          /* Sort skp_cilinders by ts_be */
+7          *proc sort 	data=mysas.skp_cilinders
+8          *			out=myownsas.skp_cilinders; /* All unique, cf. 0007AreCilinderKeysUnique.sas */
+9          *	by einddatum einddatumskp; /* The logs should be non-overlapping, so actually, einddatumskp is obsolete here. */
+10         *run;
+11         
+2                                                          The SAS System                              17:12 Thursday, July 28, 2016
+
+12         /* Sort skp1_pv by ts_registratie - SHOULD BE DONE */
+13         *proc sort data=myownsas.skp1_pv_all;
+14         *	by ts_registratie;
+15         *run;
+16         
+17         /* Measure real time */
+18         options fullstimer;
+19         %let t = %sysfunc(datetime());
+20         
+21         /* At this point, both skp_cilinders and skp1_pv_all should be sorted by timestamp.
+22            Obs in skp_cilinders start in 2010, those in skp1_pv_all start in 2015. */
+56         data myownsas.skp1allplusKeysplusCilinders;
+57         if _n_ = 1 then do;
+58         set myownsas.skp1_pv_all;
+59         einddatumskp = .; /* not really needed */
+60         end;
+61         do while (einddatumskp < ts_registratie);
+62         set myownsas.skp_cilinders; /* ts_ei UP */
+63         end;
+64         do while (ts_registratie <= einddatumskp);
+65         if (ts_registratie >= einddatum) then output;
+66         set myownsas.skp1_pv_all;  /* ts_registratie UP */
+67         end;
+68         *keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
+69         run;
+ 
+NOTE: There were 1 observations read from the data set MYOWNSAS.SKP1_PV_ALL.
+NOTE: There were 1443 observations read from the data set MYOWNSAS.SKP_CILINDERS.
+NOTE: There were 9102537 observations read from the data set MYOWNSAS.SKP1_PV_ALL.
+NOTE: The data set MYOWNSAS.SKP1ALLPLUSKEYSPLUSCILINDERS has 9102127 observations and 631 variables.
+NOTE: DATA statement used (Total process time):
+       real time           18:06.35
+       cpu time            1:33.17
+       
+ 
+70         
+71         OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
+39         
+40         /* end of program */
+
+3                                                          The SAS System                              17:12 Thursday, July 28, 2016
+
+
