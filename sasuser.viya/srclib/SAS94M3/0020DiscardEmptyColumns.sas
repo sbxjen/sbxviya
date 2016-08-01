@@ -1,9 +1,9 @@
 *;
-libname mysas "/tmp/viya/" access=readonly;
-libname myownsas "/tmp/v94/";
+libname insaslib "/tmp/viya/" access=readonly;
+libname ousaslib "/tmp/v94/";
 *;
 
-%let inputdswemptycols=myownsas.skp_cilinders;
+%let inputdswemptycols=ousaslib.crm3allPlusKeys;
 
 data _null_;
 	set &inputdswemptycols. end=last;

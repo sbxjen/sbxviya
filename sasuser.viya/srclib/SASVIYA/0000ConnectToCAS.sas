@@ -1,4 +1,3 @@
-
 /* ~/.authinfo is used to connect to CAS */
 options cashost='sbxintern16.sbx.sas.com' casport=5570;
 *options set=authinfo='/home/sasuser/.authinfo';

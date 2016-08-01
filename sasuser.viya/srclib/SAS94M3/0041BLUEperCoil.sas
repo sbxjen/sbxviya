@@ -1,4 +1,4 @@
-/* SEE ALSO: BLUEPerCoil in SASVIYA */
+/* SEE ALSO: BLUEPerCoil in SASVIYA / rdcgrd */
 
 *;
 libname mysas "/tmp/viya/" access=readonly;

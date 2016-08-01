@@ -11,14 +11,10 @@ libname ousaslib "/tmp/v94/";
 *	by einddatum einddatumskp; /* The logs should be non-overlapping, so actually, einddatumskp is obsolete here. */ 
 *run;
 
-/* Sort skp1_pv by ts_registratie - SHOULD BE DONE */
+/* Sort skp1_pv by ts_registratie */
 *proc sort data=ousaslib.skp1allplusKeys;
 *	by ts_registratie;
 *run;
-
-/* Measure real time */
-options fullstimer;
-%let t = %sysfunc(datetime());
 
 /* At this point, both skp_cilinders and skp1_pv_all should be sorted by timestamp.
    Obs in skp_cilinders start in 2010, those in skp1_pv_all start in 2015. */
@@ -37,8 +33,12 @@ options fullstimer;
 	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
 *run;
 
-data oucaslib.skp_cilinders;
-	set oucaslib.skp_cilinders;
+/* Measure real time */
+options fullstimer;
+%let t = %sysfunc(datetime());
+
+data ousaslib.skp_cilinders;
+	set insaslib.skp_cilinders;
 	ComponentDigits = input(substr(ComponentName,length(ComponentName)-1,2),2.0);
 run;
 
@@ -46,7 +46,7 @@ proc ds2;
 	data ousaslib.skp1allplusKeysplusCilinders(overwrite=yes);
 	method run();
 		set { select *
-			  from ousaslib.skp1allplusKeys a /* plusKeys2 = only with BLUE */
+			  from ousaslib.skp1allplusKeys a
       		  left join ousaslib.skp_cilinders b
       		  on ( 
       		  		(b.ComponentDigits=a.d417 or b.ComponentDigits=a.d418)
