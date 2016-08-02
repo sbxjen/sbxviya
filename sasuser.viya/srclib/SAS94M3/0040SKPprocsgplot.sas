@@ -61,6 +61,8 @@ proc sgplot data=work.coil;
 run;
 title;
 
+
+
 ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="Histogram-Blauwwaarde.html" style=HTMLBlu;
 
 proc sort data=_skp1allplusKeys_meand524;
@@ -93,5 +95,8 @@ ods html close;
 ods listing;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+
+
+
 
 /* end of program */
