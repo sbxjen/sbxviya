@@ -3,60 +3,56 @@
 
 /* Load client-side tables (In memory) on CASHOST */
 /* This could take a while. */
-proc casutil outcaslib="casuser";
-	load file="&viyadir./matm2.sas7bdat" casout="matm2";
-	load file="&viyadir./crm3_pv_be.sas7bdat" casout="crm3_pv";
-run;
+/* proc casutil outcaslib="&mycaslib.";
+	load file="/tmp/viya/matm2.sas7bdat" casout="matm2" promote;
+	load file="/tmp/v94/crm3_pv_all.sas7bdat" casout="crm3_pv_all" promote;
+run; */
 
 /* Measure real time */
 options fullstimer;
 %let t = %sysfunc(datetime());
 
+/* Duplicate over all worker nodes */
 data mycas.matm2(duplicate=yes);
-	set mycas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch ln_pr);
-	where a_dch=0 and ln_pr='CRM3';
-	drop a_dch ln_pr;
+	set mycas.matm2(keep=	ts_be ts_ei cl_n dch_n bew_vn 
+							ln_pr 
+							dl_n_lei dl_n_leu dl_n_bri dl_n_bru);
+	where (dl_n_lei = dl_n_leu) and (dl_n_bri = dl_n_bru) and (ln_pr='CRM3');
+	drop ln_pr dl_n_lei dl_n_leu dl_n_bri dl_n_bru;
 run;
 
 %let nworkers=%sysfunc(getsessopt(mysess,nworkers)); /* 100 */
 %put &nworkers=;
 
-data mycas.crm3_pv(partition=(x)); /* orderby=(ts_registratie)) not longer needed */;
+/* Partition over all worker nodes */
+data mycas.crm3_pv_all(partition=(x)); /* orderby=(ts_registratie)) not longer needed */;
 	length x $2;
-	set mycas.crm3_pv;*(orderby=(ts_registratie)); /*  NOTE: Partitioning and ordering information is only relevant for output data sets. */
+	set mycas.crm3_pv_all;
 	x = strip(put(mod(ts_registratie,&nworkers.),2.));
-	by ts_registratie; /* It is not necessary for the input data set to be sorted first */
-	if first.ts_registratie then output; /* Only output first observation of non-unique ones.; */
 run;
 
-data _null_;
-	if 0  then set mycas.matm2 nobs=lookupnobs;
- 	call symput('lookupnobs', strip(put(lookupnobs,12.))); /* Highly efficient way to count nobs without reading a single observation. */
-	stop; 
+proc ds2;
+	data mycas.crm3allplusKeys;
+    method run();
+		set	{	select	a.*, b.*
+				from	mycas.crm3_pv_all a,
+      					mycas.matm2    b
+ 				where 	a.ts_registratie between b.ts_be and b.ts_ei 
+				order by b.cl_n, b.dch_n, b.bew_vn a.ts_registratie 
+           	};
+    if 1=1 then output mycas.crm3allplusKeys;
+    end;
+  	enddata;
 run;
-
-data work.matm2index; matm2start=1; matm2end=&lookupnobs.; output; run;
-data mycas.matm2index(duplicate=yes);
-	set work.matm2index;
-run;
- 
-data mycas.crm3plusKeysKeyCols(drop=x matm2start matm2end);
-	if _n_ = 1 then set mycas.matm2index;
- 	set mycas.crm3_pv;
- 	do pointer = matm2start to matm2end;
-  		set work.matm2(point=pointer); /* Invalid option name POINT. */
-  		if ts_be <= ts_registratie <= ts_ei then output; end;
- 	end;
-run;
+quit;
 
 /* Save the join result */
-proc casutil incaslib="casuser" outcaslib="casuser";
-	save casdata="crm3plusKeysKeyCols" replace;
+proc casutil incaslib="&mycaslib." outcaslib="&mycaslib.";
+	save casdata="crm3allplusKeys" replace;
 run;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
 
 /* Shutdown CAS session */
-cas mysess disconnect; cas mysess terminate;
-
+%include "/home/sasuser/sbxviya/sasuser.viya/srclib/rdcgrd/0001CloseConn.sas";
 /* end of program */

@@ -3,9 +3,9 @@
 
 options fullstimer;
 
-%let dir=/temp/viya/;
+%let dir=/temp/v94/;
 libname mysas "&dir.";
-%let dsn=skp1allpluskeys;
+%let dsn=skp1_pv_all;
 
 /* Load client-side tables (In memory) */
 proc casutil outcaslib="&mycaslib.";
