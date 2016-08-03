@@ -1,0 +1,306 @@
+1                                                          The SAS System                              13:49 Tuesday, August 2, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          *;
+2          libname insaslib "/tmp/viya/";
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          /* Measure real time */
+7          options fullstimer source2;
+8          %let t = %sysfunc(datetime());
+9          
+10         /* Sort the resulting matm2 by ts_be */
+11         proc sort data=insaslib.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru ln_pr
+2                                                          The SAS System                              13:49 Tuesday, August 2, 2016
+
+12         		where=((dl_n_lei = dl_n_leu) and (dl_n_bri = dl_n_bru) and  ln_pr='BAL1'))
+13         		out=ousaslib.matm2(drop=a_dch ln_pr dl_n_lei dl_n_leu dl_n_bri dl_n_bru); /* All unique, cf. 0005AreMATm2KeysUnique.sas
+13       !  */
+14         	by ts_be ts_ei; /* The coils should have been processed in a non-overlapping way, so actually, ts_ei is obsolete here.
+14       ! */
+15         run;
+
+NOTE: There were 24176 observations read from the data set INSASLIB.MATM2.
+      WHERE (dl_n_lei=dl_n_leu) and (dl_n_bri=dl_n_bru) and (ln_pr='BAL1');
+NOTE: The data set OUSASLIB.MATM2 has 24176 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.65 seconds
+      user cpu time       0.04 seconds
+      system cpu time     0.08 seconds
+      memory              4846.03k
+      OS Memory           11960.00k
+      Timestamp           02/08/2016 01:49:17 PM
+      Step Count                        1  Switch Count  0
+      Page Faults                       1
+      Page Reclaims                     1385
+      Page Swaps                        0
+      Voluntary Context Switches        65
+      Involuntary Context Switches      0
+      Block Input Operations            164936
+      Block Output Operations           2328
+      
+
+16         
+17         /* Concatenate all bal1* data sets */
+18         filename sascode temp;
+19         data _null_;
+20         	set insaslib.signaaldef_bal1(keep=signaal_nr signaal where=(signaal_nr in ('d074', 'd109', 'd110', 'd111', 'd443',
+20       ! 'd476', 'd477')));
+21         	file sascode;
+22         	put "label " signaal_nr "= '" signaal+(-1)" ';";
+23         run;
+
+NOTE: The file SASCODE is:
+      Filename=/tmp/SAS_work7644000028E2_sbxintern16/#LN00009,
+      Owner Name=sastest,Group Name=sasinst,
+      Access Permission=-rw-r--r--,
+      Last Modified=02 August 2016 13 h 49 min 17 s
+
+NOTE: 7 records were written to the file SASCODE.
+      The minimum record length was 38.
+      The maximum record length was 54.
+NOTE: There were 7 observations read from the data set INSASLIB.SIGNAALDEF_BAL1.
+      WHERE signaal_nr in ('d074', 'd109', 'd110', 'd111', 'd443', 'd476', 'd477');
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      user cpu time       0.01 seconds
+      system cpu time     0.01 seconds
+      memory              1093.59k
+      OS Memory           9120.00k
+      Timestamp           02/08/2016 01:49:17 PM
+      Step Count                        2  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     908
+3                                                          The SAS System                              13:49 Tuesday, August 2, 2016
+
+      Page Swaps                        0
+      Voluntary Context Switches        0
+      Involuntary Context Switches      0
+      Block Input Operations            0
+      Block Output Operations           8
+      
+
+23       !     	
+24         data ousaslib.bal1_pv_all(keep=ts_registratie d074 d109 d110 d111 d443 d476 d477); /* d074 d109 d110 d111 = Dauw, d443
+24       ! d476 d477 = temp */
+25         	set insaslib.signaallog_bal1_past2 insaslib.signaallog_bal1;
+26         	%include sascode;
+NOTE: %INCLUDE (level 1) file SASCODE is file /tmp/SAS_work7644000028E2_sbxintern16/#LN00009.
+27        +label d109 = 'OVEN: Dauwpunt omkeerhuis ';
+28        +label d110 = 'OVEN: Dauwpunt statische koeling ';
+29        +label d111 = 'OVEN: Dauwpunt na bandkoeler 1 ';
+30        +label d074 = 'H2Droger: Dauwpunt H2O ';
+31        +label d443 = 'ONTV: Bandtemperatuur ';
+32        +label d476 = 'H2Droger: temperatuur TTT31 istwaarde ';
+33        +label d477 = 'H2Droger: temperatuur TTT35 istwaarde ';
+NOTE: %INCLUDE (level 1) ending.
+34         run;
+
+NOTE: There were 2416718 observations read from the data set INSASLIB.SIGNAALLOG_BAL1_PAST2.
+NOTE: There were 541844 observations read from the data set INSASLIB.SIGNAALLOG_BAL1.
+NOTE: The data set OUSASLIB.BAL1_PV_ALL has 2958562 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           9.81 seconds
+      user cpu time       1.64 seconds
+      system cpu time     7.58 seconds
+      memory              2294.12k
+      OS Memory           10408.00k
+      Timestamp           02/08/2016 01:49:26 PM
+      Step Count                        3  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     510
+      Page Swaps                        0
+      Voluntary Context Switches        80
+      Involuntary Context Switches      28
+      Block Input Operations            184176
+      Block Output Operations           370952
+      
+
+35         
+36         /* Sort bal1 by ts_registratie */
+37         proc sort data=ousaslib.bal1_pv_all;
+38         	by ts_registratie;	
+39         run;
+
+NOTE: There were 2958562 observations read from the data set OUSASLIB.BAL1_PV_ALL.
+NOTE: The data set OUSASLIB.BAL1_PV_ALL has 2958562 observations and 8 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.81 seconds
+      user cpu time       1.28 seconds
+      system cpu time     0.73 seconds
+      memory              306697.64k
+      OS Memory           315856.00k
+      Timestamp           02/08/2016 01:49:27 PM
+4                                                          The SAS System                              13:49 Tuesday, August 2, 2016
+
+      Step Count                        4  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     38232
+      Page Swaps                        0
+      Voluntary Context Switches        5960
+      Involuntary Context Switches      12
+      Block Input Operations            0
+      Block Output Operations           370952
+      
+
+40         data ousaslib.bal1_pv_all;
+41         	set ousaslib.bal1_pv_all;
+42         	by ts_registratie;
+43         	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005AreBAL1KeysUnique.sas
+43       ! */
+44         run;
+
+NOTE: There were 2958562 observations read from the data set OUSASLIB.BAL1_PV_ALL.
+NOTE: The data set OUSASLIB.BAL1_PV_ALL has 2958418 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.90 seconds
+      user cpu time       0.60 seconds
+      system cpu time     0.32 seconds
+      memory              937.56k
+      OS Memory           11168.00k
+      Timestamp           02/08/2016 01:49:28 PM
+      Step Count                        5  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     275
+      Page Swaps                        0
+      Voluntary Context Switches        0
+      Involuntary Context Switches      1
+      Block Input Operations            0
+      Block Output Operations           370952
+      
+
+45         
+46         /* At this point, both matm2 and bal1_pv_all should be sorted by timestamp. */
+47         data ousaslib.bal1allplusKeys;
+48         	if _n_ = 1 then do;
+49         		set ousaslib.bal1_pv_all;
+50         		ts_ei = .; /* not really needed */
+51         	end;
+52         	do while (ts_ei < ts_registratie);
+53         		set ousaslib.matm2; /* ts_ei UP */
+54         	end;
+55         	do while (ts_registratie <= ts_ei);
+56         		if (ts_registratie >= ts_be) then output;
+57         		set ousaslib.bal1_pv_all;  /* ts_registratie UP */
+58         	end;
+59         	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
+60         run;
+
+NOTE: There were 1 observations read from the data set OUSASLIB.BAL1_PV_ALL.
+NOTE: There were 24176 observations read from the data set OUSASLIB.MATM2.
+NOTE: There were 2944203 observations read from the data set OUSASLIB.BAL1_PV_ALL.
+NOTE: The data set OUSASLIB.BAL1ALLPLUSKEYS has 2918964 observations and 13 variables.
+NOTE: DATA statement used (Total process time):
+5                                                          The SAS System                              13:49 Tuesday, August 2, 2016
+
+      real time           0.67 seconds
+      user cpu time       0.27 seconds
+      system cpu time     0.41 seconds
+      memory              1181.28k
+      OS Memory           11424.00k
+      Timestamp           02/08/2016 01:49:29 PM
+      Step Count                        6  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     296
+      Page Swaps                        0
+      Voluntary Context Switches        0
+      Involuntary Context Switches      4
+      Block Input Operations            0
+      Block Output Operations           639880
+      
+
+61         
+62         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+### 12.8963100910186
+63         
+64         /* end of program */
+65         
+66         proc print data=insaslib.signaaldef_bal1(where=(signaal contains 'temp')); run;
+
+NOTE: There were 3 observations read from the data set INSASLIB.SIGNAALDEF_BAL1.
+      WHERE signaal contains 'temp';
+NOTE: The PROCEDURE PRINT printed page 1.
+NOTE: PROCEDURE PRINT used (Total process time):
+      real time           0.13 seconds
+      user cpu time       0.03 seconds
+      system cpu time     0.00 seconds
+      memory              2457.46k
+      OS Memory           11168.00k
+      Timestamp           02/08/2016 01:49:29 PM
+      Step Count                        7  Switch Count  1
+      Page Faults                       2
+      Page Reclaims                     676
+      Page Swaps                        0
+      Voluntary Context Switches        9
+      Involuntary Context Switches      2
+      Block Input Operations            1272
+      Block Output Operations           0
+      
+
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           13.06 seconds
+      user cpu time       3.89 seconds
+      system cpu time     9.14 seconds
+      memory              312887.42k
+      OS Memory           315856.00k
+      Timestamp           02/08/2016 01:49:29 PM
+      Step Count                        7  Switch Count  24
+      Page Faults                       4
+      Page Reclaims                     47861
+      Page Swaps                        0
+      Voluntary Context Switches        6185
+6                                                          The SAS System                              13:49 Tuesday, August 2, 2016
+
+      Involuntary Context Switches      50
+      Block Input Operations            350752
+      Block Output Operations           1755104
+      

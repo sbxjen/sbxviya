@@ -4,20 +4,16 @@ libname ousaslib "/tmp/v94/";
 *;
 
 /* skp1allplusKeys2 should exist by now */
-proc contents data=ousaslib.skp1allplusKeys2; run;
-
-/* Measure real time */
-options fullstimer;
-%let t = %sysfunc(datetime());
+proc contents data=ousaslib.skp1allplusKeys; run;
 
 /* k_tstmat */
-proc freq data=ousaslib.skp1allplusKeys2(keep=k_tstmat);
+proc freq data=ousaslib.skp1allplusKeys(keep=k_tstmat);
 	tables k_tstmat;
 run;
 
 /* first coil with nonzero d524 only */
 data _null_;
-	set ousaslib.skp1allplusKeys2(obs=1);
+	set ousaslib.skp1allplusKeys(obs=1);
 	call symput('coil',cl_n);
 run;
 
@@ -31,18 +27,17 @@ proc univariate data=ousaslib.skp1allplusKeys2(where=(k_tstmat like '2B%')) nopr
 run;
 
 data work.coil;
-	set ousaslib.skp1allplusKeys2(keep=cl_n ts_registratie d524 d324 d382);
+	set ousaslib.skp1allplusKeys(keep=cl_n ts_registratie d524 d324 d382);
 	where cl_n=put(&coil.,8.);
 run;
 
 /* Plot Blauwwaarde for first coil with nonzero d524 only */
-
 ods _all_ close;
 ods graphics on /
 	height=512px width=640px
 	border=off;
+	
 ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="TimeSeries-Blauwwaarde.html" style=HTMLBlue;
-
 title "Coil &coil.";
 proc sgplot data=work.coil;
 	series x=ts_registratie y=d524 / lineattrs=(color=red);
@@ -59,12 +54,35 @@ proc sgplot data=work.coil;
 	xaxis label="t";
 	yaxis grid label="Mode Polijsten";
 run;
+proc sgplot data=work.coil;
+	series x=ts_registratie y=d324 / lineattrs=(color=blue);
+	xaxis grid label="t";
+	yaxis grid label="Bandsnelheid";
+run;
+
+ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="TimeSeries-Dauwpunt.html" style=HTMLBlue;
+data _null_;
+	set ousaslib.bal1allplusKeys(obs=1);
+	call symput('coil',cl_n);
+run;
+data work.coil;
+	set ousaslib.bal1allplusKeys(keep=cl_n ts_registratie d074 d109 d110 d111);
+	where cl_n=put(&coil.,8.);
+run;
+title "Coil &coil.";
+proc sgplot data=work.coil;
+	series x=ts_registratie y=d074 / lineattrs=(color=red);
+	
+	series x=ts_registratie y=d109 / lineattrs=(color=blue pattern=1);
+	series x=ts_registratie y=d110 / lineattrs=(color=blue pattern=2);
+	series x=ts_registratie y=d111 / lineattrs=(color=blue pattern=4);
+	
+	xaxis grid label="t";
+	yaxis grid label="Dauwpunt (°C)";
+run;
 title;
 
-
-
 ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="Histogram-Blauwwaarde.html" style=HTMLBlu;
-
 proc sort data=_skp1allplusKeys_meand524;
 	by k_tstmat;
 	*by d417 d418;
@@ -79,7 +97,6 @@ proc sgplot data=_skp1allplusKeys_meand524;
 run;
 
 ods html path="/home/sastest/html/"  gpath="/home/sastest/png" file="BoxPlot-Blauwwaarde.html" style=HTMLBlue;
-
 proc sort data=_skp1allplusKeys_meand524;
 	by k_tstmat;
 	*by d417 d418;
@@ -91,12 +108,10 @@ proc sgplot data=_skp1allplusKeys_meand524;
 	xaxis display=(nolabel);
 run;
 
+title;
 ods html close;
 ods listing;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-
-
-
 
 /* end of program */

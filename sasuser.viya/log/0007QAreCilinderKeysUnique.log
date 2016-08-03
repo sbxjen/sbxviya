@@ -1,0 +1,126 @@
+1                                                          The SAS System                              11:20 Tuesday, August 2, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.10 seconds
+      cpu time            0.03 seconds
+      
+1          *proc freq data=mysas.skp_cilinders noprint;
+2          *	tables historyid / missing out=work.skp_cilinderscount;
+3          *run;
+4          *
+5          *data work.skp_cilinderscount;
+6          *	set work.skp_cilinderscount;
+7          *	where count >= 2;
+8          *run;
+9          *
+10         *data _null_;
+11         *	if 0 then set work.skp_cilinderscount nobs=countnuk;  			/* Highly efficient way to count nobs without reading a single
+11       !  observation */
+12         *	call symput('NonUniqueKeys', strip(put(countnuk,8.)));  /* strip = trim(left(.)) */
+13         *	stop;
+14         *run;
+15         *
+16         *%put The number of non-unique keys in skp_cilinders equals &NonUniqueKeys..;
+2                                                          The SAS System                              11:20 Tuesday, August 2, 2016
+
+17         
+18         /* Second question: How many different cilinders are used with one coil at the SKP? */
+19         /* This question can only be answered as soon as skp1allplusKeys has been created. */
+20         libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+21         libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+22         
+23         proc sort 	data=ousaslib.skp1allplusKeys(keep=cl_n bew_vn dch_n ts_registratie ts_be d417 d418)
+24         			out=work.skp_cilinderscount;
+25         	by ts_be d417 d418;
+26         run;
+
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYS.
+NOTE: The data set WORK.SKP_CILINDERSCOUNT has 5740392 observations and 7 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           18.95 seconds
+      cpu time            20.96 seconds
+      
+
+27         data work.skp_cilinderscount;
+28         	set work.skp_cilinderscount;
+29         	by ts_be d417 d418;
+30         	if ( (first.d417 or first.d418) and (not first.ts_be) ) then output;
+31         	keep cl_n bew_vn dch_n ts_registratie;
+32         run;
+
+NOTE: There were 5740392 observations read from the data set WORK.SKP_CILINDERSCOUNT.
+NOTE: The data set WORK.SKP_CILINDERSCOUNT has 500 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.73 seconds
+      cpu time            0.99 seconds
+      
+
+33         
+34         data _null_;
+35         	if 0 then set work.skp_cilinderscount nobs=countncil;  			/* Highly efficient way to count nobs without reading a single
+35       !  observation */
+36         	call symput('NonUnique', strip(put(countncil,8.)));  	/* strip = trim(left(.)) */
+37         	stop;
+38         run;
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+39         
+40         %put A new cilinder was used &NonUnique. times.;
+A new cilinder was used 500 times.
+41         
+42         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+3                                                          The SAS System                              11:20 Tuesday, August 2, 2016
+
+NOTE: The SAS System used:
+      real time           20.80 seconds
+      cpu time            21.98 seconds
+      
