@@ -1,11 +1,11 @@
 /* Make the connection to CAS */
-%include "/home/sasuser/sbxviya/sasuser.viya/srclib/rdcgrd/0000ConnectToCAS.sas";
+%include "/home/sasuser/sbxviya/sasuser.viya/srclib/SASVIYA/0000ConnectToCAS.sas";
 
 options fullstimer;
 %let t = %sysfunc(datetime());
 
 proc casutil;
-	load file="skp1allpluskeys.sas7bdat";
+	load file="/tmp/v94/skp1allpluskeys.sas7bdat" casout="skp1allpluskeys";
 run;
 
 %put ### Time to load file: %sysevalf( %sysfunc(datetime()) - &t. );
