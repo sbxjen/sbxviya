@@ -26,11 +26,13 @@ data work.long;
 	keep x y;
 run;
 
-ods graphics on / scale;
+ods graphics on / scale=on;
 title "The MNIST Data";
-proc sgplot data=work.long;
-	scatter x=x y=y / markerattrs=(color=black size=20 symbol=SquareFilled);
-	xaxis display=none;
-	yaxis display=none;
+proc sgplot data=work.long; 
+	scatter x=x y=y /
+		markerattrs=(size=3.75pt symbol=circlefilled)
+		transparency=0.3;
+	xaxis display=none; yaxis display=none; 
 run;
 ods _all_ close;
+

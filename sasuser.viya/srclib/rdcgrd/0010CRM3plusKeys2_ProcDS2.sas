@@ -1,5 +1,5 @@
 /* Make the connection to CAS */
-%include "/home/sasuser/sbxviya/sasuser.viya/srclib/rdcgrd/0000ConnectToCAS.sas";
+/* %include "/home/sasuser/sbxviya/sasuser.viya/srclib/rdcgrd/0000ConnectToCAS.sas";
 
 /* Load client-side tables (In memory) on CASHOST */
 /* This could take a while. */
@@ -11,6 +11,12 @@ run; */
 /* Measure real time */
 options fullstimer;
 %let t = %sysfunc(datetime());
+
+/* Load (server-side) files In memory */
+proc casutil incaslib="&mycaslib.";
+	load casdata="matm2.sashdat" casout="matm2" promote;
+	load casdata="crm3_pv_all.sashdat" casout="crm3_pv_all" promote;
+run;
 
 /* Duplicate over all worker nodes */
 data mycas.matm2(duplicate=yes);
