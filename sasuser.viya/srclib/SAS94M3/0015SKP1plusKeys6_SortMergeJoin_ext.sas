@@ -22,6 +22,7 @@ data myownsas.skp1_pv_all;
 	set mysas.skp1_pv_2015q1 mysas.skp1_pv_2015q2 mysas.skp1_pv_2015q3 mysas.skp1_pv_2015q4 mysas.skp1_pv;
 	/* UPDATE: not skp_pw_blauwwaarde = d524 = . */
 	where not (d524=.);
+	drop ts_registratie_gmt;
 run;
 
 /* Sort skp1_pv by ts_registratie */

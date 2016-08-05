@@ -3,7 +3,7 @@ libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
 
-%let inputdswemptycols=ousaslib.skp1allPlusKeys;
+%let inputdswemptycols=ousaslib.crm3allPlusKeys;
 
 data _null_;
 	set &inputdswemptycols. end=last;

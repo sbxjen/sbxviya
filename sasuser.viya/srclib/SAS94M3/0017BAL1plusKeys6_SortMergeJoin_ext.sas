@@ -24,6 +24,7 @@ run;
 data ousaslib.bal1_pv_all(keep=ts_registratie d074 d109 d110 d111 d443 d476 d477); /* d074 d109 d110 d111 = Dauw, d443 d476 d477 = temp */
 	set insaslib.signaallog_bal1_past2 insaslib.signaallog_bal1;
 	%include sascode;
+	drop ts_registratie_gmt;
 run;
 
 /* Sort bal1 by ts_registratie */

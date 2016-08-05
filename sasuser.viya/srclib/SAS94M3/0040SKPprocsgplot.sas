@@ -2,7 +2,7 @@
 libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
-
+	
 /* skp1allplusKeys2 should exist by now */
 proc contents data=ousaslib.skp1allplusKeys; run;
 
