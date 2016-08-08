@@ -16,7 +16,8 @@ run;
 
 /* Sort crm3_pv by ts_registratie */
 proc sort data=insaslib.crm3_pv out=ousaslib.crm3_pv;
-	by ts_registratie;	
+	by ts_registratie;
+	drop ts_registratie_gmt;
 run;
 data ousaslib.crm3_pv;
 	set ousaslib.crm3_pv;

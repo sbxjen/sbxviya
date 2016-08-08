@@ -17,7 +17,7 @@ data ousaslib.skp1walsplusKeys;
 										/* _pol = #s Polijsten (voor deel) */
 	if first.dch_n then do;				/* New coil */
 		_deel 	= 0;
-		_x 	= 0;
+		_x 		= 0;
 		_walsen	= 0;
 	end;
 	if ( d382=0 and d324 ge 200 and d522+d523 ge 150 ) then 
@@ -50,25 +50,6 @@ data ousaslib.skp1walsplusKeys;
 	drop _walsen _dx;
 	*keep cl_n bew_vn dch_n ts_registratie d324 d382 d341 d342 d522 d523 d524 _deel _x _pol _dd524;
 run;
-
-/* preprocess.m */
-/* macro to perform the 4 steps in Thoughts */
-/* 1. outliers
-   2. moving average with PROC EXPAND    
-   		proc expand data=sashelp.usecon(rename=(DURABLES=x)) out=out method=none;
-   			convert x = x_movave / transformout=(movave 3);
-   		run;
-   	3. again, but now based on stddev
-   	4. spline
-*/
-
-options nonotes;
-proc transreg data=ousaslib.skp1walsplusKeys;
-	by cl_n bew_vn dch_n _deel;
-	model identity(d524)=spline(ts_registratie / degree=3); /* NOT (_x) */
-	output out=ousaslib.skp1walsplusKeys_SPLINE predicted;
-run;
-options notes;
 
 /* end of program */
 
