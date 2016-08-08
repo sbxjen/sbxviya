@@ -1,20 +1,26 @@
-%let height=5;
-%let width=5;
+options cashost="sbxintern16.sbx.sas.com" casport=5570 casuser="sasuser";
+cas mysess sessopts=(caslib="casuser") uuidmac=uuid;
+libname mycas cas caslib="casuser";
 
-data work.image;
-	input d1-d25;
-datalines;
-0 0 1 0 0 
-0 1 0 1 0 
-1 0 0 0 1 
-1 0 0 0 1 
-1 1 1 1 1 
-;
+%put &uuid.;
+
+proc casutil incaslib="casuser";
+	list tables;
+run;
+
+proc contents data=mycas.mnist; run;
+
+%let height=28;
+%let width=28;
+
+data work.mnist;
+	set mycas.mnist(firstobs=1 obs=1);
+	put d784=;
 run;
 
 data work.long;
-	array d{25};
-	set work.image;
+	array d{784};
+	set work.mnist(drop=d784);
 	do i=1 to &height.;
 		y = &height.-i;
 		do j=1 to &width.;
@@ -26,11 +32,11 @@ data work.long;
 	keep x y;
 run;
 
-ods graphics on / scale=on;
+ods graphics on;* / scale=on;
 title "The MNIST Data";
 proc sgplot data=work.long; 
 	scatter x=x y=y /
-		markerattrs=(size=3.75pt symbol=circlefilled)
+		markerattrs=(size=30pt symbol=squarefilled)
 		transparency=0.3;
 	xaxis display=none; yaxis display=none; 
 run;
