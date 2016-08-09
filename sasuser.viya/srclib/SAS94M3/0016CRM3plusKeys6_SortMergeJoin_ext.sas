@@ -18,7 +18,7 @@ run;
 /* Concatenate all crm3_pv* data sets */
 data ousaslib.crm3_pv_all;
 	set insaslib.crm3_pv_2015q1 insaslib.crm3_pv_2015q2 insaslib.crm3_pv_2015q3 insaslib.crm3_pv_2015q4 insaslib.crm3_pv;
-	drop ts_registratie_gmt;
+	drop ts_registratie_gmt datum_reg guid;
 run;
 
 /* Sort crm3_pv by ts_registratie */

@@ -4,6 +4,8 @@ libname ousaslib "/tmp/v94/";
 *;
 
 %let inputdswconstcols=ousaslib.skp1allPlusKeys;
+*%let inputdswconstcols=ousaslib.skp1allPlusKeysplusCilinders;
+*%let inputdswconstcols=ousaslib.crm3allPlusKeys;
 
 /* numeric */
 ods output summary=work.summ;

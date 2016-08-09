@@ -8,11 +8,11 @@ libname ousaslib "/tmp/v94/";
 	value missfmt . ='Missing' other='Not Missing';
 run;*/
 
-/*data ousaslib.skp1small;
+data ousaslib.skp1small;
 	set ousaslib.skp1walsplusKeys(obs=2000);
-	keep cl_n bew_vn dch_n ts_registratie d324 d382 d522 d523 d524 _deel _x _pol KeyCol;
-	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
-run;*/
+	*keep cl_n bew_vn dch_n ts_registratie d324 d382 d522 d523 d524 _deel _x _pol KeyCol;
+	*KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
+run;
 
 
 /* Preprocess the signal y in a pass- or coil-based data set dsn (e.g. ousaslib.skp1walsplusKeys).
@@ -84,7 +84,6 @@ run;*/
 %mend;
 /* end of macro */
 
-
 /* Preprocess all interval variables in a pass- or coil-based data set. */
 %macro preprocess_all();
 
@@ -96,8 +95,8 @@ run;*/
 	
 	%do  ivar=1 %to &nvar.;
 		%let yvar=%scan(&intlist.,&ivar.);
-		%preprocess(dsn=&inputds., y=&yvar., KeyCol=&KeyCols.);
-	%end
+		%preprocess(dsn=&inputdsn., y=&yvar., KeyCol=&KeyCols.);
+	%end;
 
 %mend;
 /* end of macro */
@@ -106,13 +105,15 @@ run;*/
 /* Define some 'global' macro variables. */
 
 /* Pass-based input data set (e.g. ousaslib.skp1walsplusKeys) */
-%let inputds=ousaslib.skp1small;
+%let inputdsn=ousaslib.skp1small;
 /* time ID for PROC EXPAND, PROC TRANSREG ... */
 %let t=ts_registratie;
 /* ID columns: these are not counted as interval variables. */
 %let IDCols=('ts_registratie', 'cl_n', 'bew_vn', 'dch_n', 'ts_be', 'ts_ei');
 /* Key columns: BY variables for PROC EXPAND, PROC TRANSREG ... */
 %let KeyCols=cl_n bew_vn dch_n _deel;
+
+options source2;
 
 %preprocess_all();
 

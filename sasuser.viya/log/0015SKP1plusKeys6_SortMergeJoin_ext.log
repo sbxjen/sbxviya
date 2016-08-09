@@ -1,4 +1,4 @@
-1                                                          The SAS System                              16:07 Saturday, July 30, 2016
+1                                                          The SAS System                              09:04 Tuesday, August 9, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -38,217 +38,212 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           0.76 seconds
-      cpu time            0.04 seconds
+      real time           0.07 seconds
+      cpu time            0.02 seconds
       
 1          *;
-2          libname mysas "/tmp/viya/" access=readonly;
-NOTE: Libref MYSAS was successfully assigned as follows: 
+2          libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
       Engine:        V9 
       Physical Name: /tmp/viya
-3          libname myownsas "/tmp/v94/";
-NOTE: Libref MYOWNSAS was successfully assigned as follows: 
+3          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
       Engine:        V9 
       Physical Name: /tmp/v94
 4          *;
 5          
-6          proc contents data=mysas.matm2; run;
-
-NOTE: PROCEDURE CONTENTS used (Total process time):
-      real time           0.39 seconds
-      cpu time            0.05 seconds
-      
-2                                                          The SAS System                              16:07 Saturday, July 30, 2016
-
-NOTE: The PROCEDURE CONTENTS printed pages 1-4.
-
+6          *proc contents data=insaslib.matm2; run;
 7          
 8          /* Measure real time */
 9          options fullstimer;
 10         %let t = %sysfunc(datetime());
 11         
+2                                                          The SAS System                              09:04 Tuesday, August 9, 2016
+
 12         /* Sort matm2 by ts_be */
-13         proc sort data=mysas.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn k_tstmat a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru ln_pr
+13         proc sort data=insaslib.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn k_tstmat a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru ln_pr
 14         		/* where=(a_dch=0 and ln_pr='SKP1'))  */
 15         		where=((dl_n_lei = dl_n_leu) and (dl_n_bri = dl_n_bru) and ln_pr='SKP1'))
-16         		out=myownsas.matm2(drop=a_dch ln_pr dl_n_lei dl_n_leu); /* All unique, cf. 0005AreMATm2KeysUnique.sas */
+16         		out=ousaslib.matm2(drop=a_dch ln_pr dl_n_lei dl_n_leu dl_n_bri dl_n_bru); /* All unique, cf. 0005AreMATm2KeysUnique.sas
+16       !  */
 17         	by ts_be ts_ei; /* The coils should have been processed in a non-overlapping way, so actually, ts_ei is obsolete here.
 17       ! */
 18         run;
 
-NOTE: There were 26485 observations read from the data set MYSAS.MATM2.
+NOTE: There were 26485 observations read from the data set INSASLIB.MATM2.
       WHERE (dl_n_lei=dl_n_leu) and (dl_n_bri=dl_n_bru) and (ln_pr='SKP1');
-NOTE: The data set MYOWNSAS.MATM2 has 26485 observations and 8 variables.
+NOTE: The data set OUSASLIB.MATM2 has 26485 observations and 6 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           0.14 seconds
-      user cpu time       0.03 seconds
-      system cpu time     0.05 seconds
-      memory              4858.93k
-      OS Memory           14008.00k
-      Timestamp           30/07/2016 04:07:05 PM
-      Step Count                        2  Switch Count  0
-      Page Faults                       6
-      Page Reclaims                     1219
+      real time           0.78 seconds
+      user cpu time       0.04 seconds
+      system cpu time     0.09 seconds
+      memory              4821.87k
+      OS Memory           11960.00k
+      Timestamp           09/08/2016 09:04:10 AM
+      Step Count                        1  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     1497
       Page Swaps                        0
-      Voluntary Context Switches        7
+      Voluntary Context Switches        71
       Involuntary Context Switches      0
-      Block Input Operations            1416
-      Block Output Operations           3352
+      Block Input Operations            165896
+      Block Output Operations           2968
       
 
 19         
 20         /* Concatenate all skp1_pv* data sets */
-21         data myownsas.skp1_pv_all;
-22         	set mysas.skp1_pv_2015q1 mysas.skp1_pv_2015q2 mysas.skp1_pv_2015q3 mysas.skp1_pv_2015q4 mysas.skp1_pv;
+21         data ousaslib.skp1_pv_all;
+22         	set insaslib.skp1_pv_2015q1 insaslib.skp1_pv_2015q2 insaslib.skp1_pv_2015q3 insaslib.skp1_pv_2015q4 insaslib.skp1_pv;
 23         	/* UPDATE: not skp_pw_blauwwaarde = d524 = . */
 24         	where not (d524=.);
-25         run;
+25         	drop ts_registratie_gmt;
+26         run;
 
-NOTE: There were 0 observations read from the data set MYSAS.SKP1_PV_2015Q1.
+NOTE: There were 0 observations read from the data set INSASLIB.SKP1_PV_2015Q1.
       WHERE d524 not = .;
-NOTE: There were 462359 observations read from the data set MYSAS.SKP1_PV_2015Q2.
+NOTE: There were 462359 observations read from the data set INSASLIB.SKP1_PV_2015Q2.
       WHERE d524 not = .;
-NOTE: There were 1529264 observations read from the data set MYSAS.SKP1_PV_2015Q3.
+NOTE: There were 1529264 observations read from the data set INSASLIB.SKP1_PV_2015Q3.
       WHERE d524 not = .;
-NOTE: There were 1545352 observations read from the data set MYSAS.SKP1_PV_2015Q4.
+NOTE: There were 1545352 observations read from the data set INSASLIB.SKP1_PV_2015Q4.
       WHERE d524 not = .;
-NOTE: There were 3241116 observations read from the data set MYSAS.SKP1_PV.
+NOTE: There were 3241116 observations read from the data set INSASLIB.SKP1_PV.
       WHERE d524 not = .;
-NOTE: The data set MYOWNSAS.SKP1_PV_ALL has 6778091 observations and 584 variables.
+NOTE: The data set OUSASLIB.SKP1_PV_ALL has 6778091 observations and 583 variables.
 NOTE: DATA statement used (Total process time):
-      real time           14:20.21
-      user cpu time       10.04 seconds
-3                                                          The SAS System                              16:07 Saturday, July 30, 2016
+      real time           13:28.99
+      user cpu time       9.79 seconds
+      system cpu time     1:00.35
+      memory              4135.37k
+      OS Memory           11960.00k
+      Timestamp           09/08/2016 09:17:39 AM
+      Step Count                        2  Switch Count  0
+3                                                          The SAS System                              09:04 Tuesday, August 9, 2016
 
-      system cpu time     1:03.79
-      memory              4147.10k
-      OS Memory           14008.00k
-      Timestamp           30/07/2016 04:21:25 PM
-      Step Count                        3  Switch Count  0
-      Page Faults                       5
-      Page Reclaims                     1075
+      Page Faults                       0
+      Page Reclaims                     1160
       Page Swaps                        0
-      Voluntary Context Switches        26734
-      Involuntary Context Switches      265
-      Block Input Operations            83945640
+      Voluntary Context Switches        26460
+      Involuntary Context Switches      163
+      Block Input Operations            83946792
       Block Output Operations           64266776
       
 
-26         
-27         /* Sort skp1_pv by ts_registratie */
-28         proc sort data=myownsas.skp1_pv_all;
-29         	by ts_registratie;
-30         run;
+27         
+28         /* Sort skp1_pv by ts_registratie */
+29         proc sort data=ousaslib.skp1_pv_all;
+30         	by ts_registratie;
+31         run;
 
-NOTE: There were 6778091 observations read from the data set MYOWNSAS.SKP1_PV_ALL.
-NOTE: The data set MYOWNSAS.SKP1_PV_ALL has 6778091 observations and 584 variables.
+NOTE: There were 6778091 observations read from the data set OUSASLIB.SKP1_PV_ALL.
+NOTE: The data set OUSASLIB.SKP1_PV_ALL has 6778091 observations and 583 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           18:47.42
-      user cpu time       1:21.00
-      system cpu time     2:20.27
-      memory              1055672.67k
-      OS Memory           1067772.00k
-      Timestamp           30/07/2016 04:40:12 PM
-      Step Count                        4  Switch Count  0
-      Page Faults                       6
-      Page Reclaims                     260295
+      real time           25:38.39
+      user cpu time       1:16.53
+      system cpu time     2:13.28
+      memory              1055660.09k
+      OS Memory           1065468.00k
+      Timestamp           09/08/2016 09:43:17 AM
+      Step Count                        3  Switch Count  0
+      Page Faults                       3
+      Page Reclaims                     264783
       Page Swaps                        0
-      Voluntary Context Switches        1058386
-      Involuntary Context Switches      616
-      Block Input Operations            128326824
-      Block Output Operations           128536680
+      Voluntary Context Switches        1049888
+      Involuntary Context Switches      697
+      Block Input Operations            127847456
+      Block Output Operations           128540816
       
 
-31         data myownsas.skp1_pv_all;
-32         	set myownsas.skp1_pv_all;
-33         	by ts_registratie;
-34         	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005Areskp1KeysUnique.sas
-34       ! */
-35         run;
+32         data ousaslib.skp1_pv_all;
+33         	set ousaslib.skp1_pv_all;
+34         	by ts_registratie;
+35         	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005Areskp1KeysUnique.sas
+35       ! */
+36         run;
 
-NOTE: There were 6778091 observations read from the data set MYOWNSAS.SKP1_PV_ALL.
-NOTE: The data set MYOWNSAS.SKP1_PV_ALL has 6776355 observations and 584 variables.
+NOTE: There were 6778091 observations read from the data set OUSASLIB.SKP1_PV_ALL.
+NOTE: The data set OUSASLIB.SKP1_PV_ALL has 6776355 observations and 583 variables.
 NOTE: DATA statement used (Total process time):
-      real time           8:28.84
+      real time           14:01.11
       user cpu time       9.09 seconds
-      system cpu time     57.64 seconds
-      memory              1914.93k
-      OS Memory           14256.00k
-      Timestamp           30/07/2016 04:48:41 PM
-      Step Count                        5  Switch Count  0
-      Page Faults                       2
-      Page Reclaims                     302
-4                                                          The SAS System                              16:07 Saturday, July 30, 2016
-
+      system cpu time     57.72 seconds
+      memory              1898.87k
+      OS Memory           11944.00k
+      Timestamp           09/08/2016 09:57:19 AM
+      Step Count                        4  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     312
       Page Swaps                        0
-      Voluntary Context Switches        13489
-      Involuntary Context Switches      171
-      Block Input Operations            37642096
+      Voluntary Context Switches        14421
+      Involuntary Context Switches      253
+      Block Input Operations            46622256
       Block Output Operations           64250384
+4                                                          The SAS System                              09:04 Tuesday, August 9, 2016
+
       
 
-36         
-37         /* At this point, both obs in matm2 and skp1_pv_all should be sorted by timestamp.
-38            Obs in matm2 start in 2011, those in skp1_pv_all start in 2015.
-39            Obs in matm2 can only be mothers. */
-40         data myownsas.skp1allplusKeys;
-41         	if _n_ = 1 then do;
-42         		set myownsas.skp1_pv_all;
-43         		ts_ei = .; /* not really needed */
-44         	end;
-45         	do while (ts_ei < ts_registratie);
-46         		set myownsas.matm2; /* ts_ei UP */
-47         	end;
-48         	do while (ts_registratie <= ts_ei);
-49         		if (ts_registratie >= ts_be) then output;
-50         		set myownsas.skp1_pv_all;  /* ts_registratie UP */
-51         	end;
-52         	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
-53         run;
+37         
+38         /* At this point, both obs in matm2 and skp1_pv_all should be sorted by timestamp.
+39            Obs in matm2 start in 2011, those in skp1_pv_all start in 2015.
+40            Obs in matm2 can only be mothers. */
+41         data ousaslib.skp1allplusKeys;
+42         	if _n_ = 1 then do;
+43         		set ousaslib.skp1_pv_all;
+44         		ts_ei = .; /* not really needed */
+45         	end;
+46         	do while (ts_ei < ts_registratie);
+47         		set ousaslib.matm2; /* ts_ei UP */
+48         	end;
+49         	do while (ts_registratie <= ts_ei);
+50         		if (ts_registratie >= ts_be) then output;
+51         		set ousaslib.skp1_pv_all;  /* ts_registratie UP */
+52         	end;
+53         	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
+54         run;
 
-NOTE: There were 1 observations read from the data set MYOWNSAS.SKP1_PV_ALL.
-NOTE: There were 26485 observations read from the data set MYOWNSAS.MATM2.
-NOTE: There were 6759336 observations read from the data set MYOWNSAS.SKP1_PV_ALL.
-NOTE: The data set MYOWNSAS.SKP1ALLPLUSKEYS has 5740392 observations and 592 variables.
+NOTE: There were 1 observations read from the data set OUSASLIB.SKP1_PV_ALL.
+NOTE: There were 26485 observations read from the data set OUSASLIB.MATM2.
+NOTE: There were 6759336 observations read from the data set OUSASLIB.SKP1_PV_ALL.
+NOTE: The data set OUSASLIB.SKP1ALLPLUSKEYS has 5740392 observations and 589 variables.
 NOTE: DATA statement used (Total process time):
-      real time           7:34.39
-      user cpu time       7.70 seconds
-      system cpu time     47.67 seconds
-      memory              2368.10k
-      OS Memory           14256.00k
-      Timestamp           30/07/2016 04:56:15 PM
-      Step Count                        6  Switch Count  0
-      Page Faults                       2
-      Page Reclaims                     333
+      real time           11:03.14
+      user cpu time       7.83 seconds
+      system cpu time     48.55 seconds
+      memory              2353.03k
+      OS Memory           11944.00k
+      Timestamp           09/08/2016 10:08:22 AM
+      Step Count                        5  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     434
       Page Swaps                        0
-      Voluntary Context Switches        11531
-      Involuntary Context Switches      129
-      Block Input Operations            32401768
+      Voluntary Context Switches        13715
+      Involuntary Context Switches      164
+      Block Input Operations            42551368
       Block Output Operations           54427920
       
 
-54         
-55         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-### 2951.09628987312
-56         
-57         /* end of program */
+55         
+56         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+### 3852.46834993362
+57         
+58         /* end of program */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           49:12.50
-      user cpu time       1:47.93
-      system cpu time     5:09.46
-5                                                          The SAS System                              16:07 Saturday, July 30, 2016
+      real time           1:04:12.61
+      user cpu time       1:43.31
+      system cpu time     5:00.00
+      memory              1061822.37k
+      OS Memory           1065468.00k
+      Timestamp           09/08/2016 10:08:22 AM
+      Step Count                        5  Switch Count  16
+      Page Faults                       7
+5                                                          The SAS System                              09:04 Tuesday, August 9, 2016
 
-      memory              1064061.09k
-      OS Memory           1067772.00k
-      Timestamp           30/07/2016 04:56:16 PM
-      Step Count                        6  Switch Count  22
-      Page Faults                       145
-      Page Reclaims                     270530
+      Page Reclaims                     273768
       Page Swaps                        0
-      Voluntary Context Switches        1110355
-      Involuntary Context Switches      1184
-      Block Input Operations            282362696
-      Block Output Operations           311485216
+      Voluntary Context Switches        1104628
+      Involuntary Context Switches      1280
+      Block Input Operations            301134496
+      Block Output Operations           311488920
       
