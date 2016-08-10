@@ -1,5 +1,5 @@
 /* To be called from another program */	
-%let IDCols=('ts_registratie', 'cl_n', 'bew_vn', 'dch_n', 'ts_be', 'ts_ei');
+*%let IDCols=('ts_registratie', 'cl_n', 'bew_vn', 'dch_n', 'ts_be', 'ts_ei');
 
 ods output Nlevels=Nlevels;
 proc freq data=&inputdsn.(obs=2000) nlevels; /* 2,000 should be enough to give a reliable indication */

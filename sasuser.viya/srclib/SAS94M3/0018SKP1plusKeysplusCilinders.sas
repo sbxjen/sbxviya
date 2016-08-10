@@ -43,24 +43,24 @@ options fullstimer;
 *run;
 
 /* Create macros to rename variables in skp_cilinders for T (top) and B (bottom) side. */
-proc contents data=ousaslib.skp_cilinders out=varnames; 
-data _null_;
-	length _Tvars $6000 _Bvars $6000;
-	retain _Tvars _Bvars ;
-	set varnames end=last;
-	_Tvars = catx( " ", _Tvars, catx( "=", name, 't'||strip(name) ) ) ; 
-	_Bvars = catx( " ", _Bvars, catx( "=", name, 'b'||strip(name) ) ) ; 
-	if last then do;
-		call symputx("toplist", _Tvars);			
-		call symputx("bottomlist", _Bvars);
-	end;
-run;
+*proc contents data=ousaslib.skp_cilinders out=varnames; 
+*data _null_;
+*	length _Tvars $6000 _Bvars $6000;
+*	retain _Tvars _Bvars ;
+*	set varnames end=last;
+*	_Tvars = catx( " ", _Tvars, catx( "=", name, 't'||strip(name) ) ) ; 
+*	_Bvars = catx( " ", _Bvars, catx( "=", name, 'b'||strip(name) ) ) ; 
+*	if last then do;
+*		call symputx("toplist", _Tvars);			
+*		call symputx("bottomlist", _Bvars);
+*	end;
+*run;
 
-%put &=toplist.; %put &=bottomlist.;
+*%put &=toplist.; *%put &=bottomlist.;
 
-data ousaslib.skp_cilinders_T(rename=(&toplist.)) ousaslib.skp_cilinders_B(rename=(&bottomlist.));
-	set ousaslib.skp_cilinders;
-run;
+*data ousaslib.skp_cilinders_T(rename=(&toplist.)) ousaslib.skp_cilinders_B(rename=(&bottomlist.));
+*	set ousaslib.skp_cilinders;
+*run;
 
 /*proc sql;
 	create table ousaslib.skp1allplusKeysplusCilinders1
@@ -75,18 +75,17 @@ run;
 quit;*/
 
 
-proc sql;
+/*proc sql;
 	create table ousaslib.skp1allplusKeysplusCilinders
 	as select a.*, b.*
 	from ousaslib.skp1allplusKeysplusCilinders1 a
     left join ousaslib.skp_cilinders_B b
     on ( 
-      	(b.bComponentDigits = a.d417)
+      	(b.bComponentDigits = a.d418)
     and 	 
         (b.beinddatum <= a.ts_registratie and a.ts_registratie <= b.beinddatumskp) 
         );
- 			  /*order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie*/
-quit;
+quit;*/
 
 /* The code below does not work.
    See also: 0018SKP1plusKeysplusCilinders_ERROR.log */
@@ -131,6 +130,10 @@ quit;
 proc datasets library=ousaslib nolist;
 	delete skp_cilinders_T skp_cilinders_B skp1allplusKeysplusCilinders1 / memtype=data;
 run;*/
+
+proc sort data=ousaslib.skp1allplusKeysplusCilinders;
+	by cl_n bew_vn dch_n ts_registratie;
+run;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );
 

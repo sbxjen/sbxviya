@@ -5,12 +5,12 @@ libname ousaslib "/tmp/v94/";
 
 %let walsen = d382=0 and d324 ge 200 and d522+d523 ge 150; *d341+d342 ge 150; /* Mode Polijsten (1=Actief) AND Bandsnelheid > 200 m/min AND Druk wals AZ + BZ > 150 ton */ 
 
-proc sort data=ousaslib.skp1allplusKeys nodupkey;
+/*proc sort data=ousaslib.skp1allplusKeysplusCilinders nodupkey;
 	by cl_n bew_vn dch_n ts_registratie;
-run;
+run;*/
 
 data ousaslib.skp1walsplusKeys;
-	set ousaslib.skp1allplusKeys;
+	set ousaslib.skp1allplusKeysplusCilinders ;
 	by cl_n bew_vn dch_n ts_registratie;
 	retain _deel _x _pol _walsen 0;	/* New Key = cl_n, bew_vn, dch_n, _deel (na Polijsten) */
 										/* _x = #m this coil has been rolled so far */
@@ -52,7 +52,5 @@ data ousaslib.skp1walsplusKeys;
 run;
 
 /* end of program */
-
-proc print data=ousaslib.skp1walsplusKeys(firstobs=2000 obs=2100); run;
 
 

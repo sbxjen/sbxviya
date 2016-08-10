@@ -3,7 +3,7 @@ libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
 
-%let inputdswconstcols=ousaslib.skp1allPlusKeys;
+*%let inputdswconstcols=ousaslib.skp1allPlusKeys;
 *%let inputdswconstcols=ousaslib.skp1allPlusKeysplusCilinders;
 *%let inputdswconstcols=ousaslib.crm3allPlusKeys;
 
@@ -16,7 +16,7 @@ data _null_;
 	set work.summ;
 	length _vars $6000;
 	array _n _numeric_ _dumn;
-	do i = 1 to 20; *dim(_n)-1;
+	do i = 1 to dim(_n)-1;
 		if (substr(vname(_n{i}), length(vname(_n{i}))-6, 7) = "_StdDev" and _n{i}=0)
 		then do;
 			_vars = catx(" ", _vars, substr(vname(_n{i}), 1, length(vname(_n{i}))-7));
@@ -28,9 +28,14 @@ run;
 %put &=droplist_n.;
 
 /* character */
+data &inputdswconstcols.;
+	set &inputdswconstcols.;
+	_dumc = '_dumc';
+run;
+
 ods output nlevels=work.nlevels;
 proc freq data=&inputdswconstcols. nlevels;
-	tables _character_ / noprint;
+	tables _character_ _dumc / noprint;
 run;
 
 data _null_;

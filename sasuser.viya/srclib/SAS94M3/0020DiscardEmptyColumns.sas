@@ -2,7 +2,7 @@
 libname ousaslib "/tmp/v94/";
 *;
 
-%let inputdswemptycols=ousaslib.skp1allPlusKeys;
+*%let inputdswemptycols=ousaslib.skp1allPlusKeys;
 *%let inputdswemptycols=ousaslib.skp1allPlusKeysplusCilinders;
 *%let inputdswemptycols=ousaslib.crm3allPlusKeys;
 

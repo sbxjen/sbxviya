@@ -1,0 +1,281 @@
+1                                                          The SAS System                           10:58 Wednesday, August 10, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           1.02 seconds
+      cpu time            0.06 seconds
+      
+1          /* Quick and dirty: discard empty and constant columns in all data sets of interest. */
+2          
+3          *;
+4          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+5          *;
+6          
+7          options nosymbolgen;
+8          
+9          /*data ousaslib.temp;
+10         	length a $8;
+11         	infile datalines missover;
+12         	input a b c d e;
+13         	datalines;
+14         z 0 1 2
+2                                                          The SAS System                           10:58 Wednesday, August 10, 2016
+
+15         z 0 2 4
+16         z 0 4 8
+17         z 0 8 16
+18         ;
+19         run;*/
+20         
+21         %macro discard(tables=);
+22         %let n=%sysfunc(countw(&tables.,%str( )));
+23         %do i = 1 %to &n;
+24         	%let inputdswemptycols = ousaslib.%scan(&tables., &i);
+25         	%include '/home/sastest/sbxviya/sasuser.viya/srclib/SAS94M3/0020DiscardEmptyColumns.sas';
+26         	%let inputdswconstcols = &inputdswemptycols.;
+27         	%include '/home/sastest/sbxviya/sasuser.viya/srclib/SAS94M3/0021DiscardConstantColumns.sas';
+28         %end;
+29         %mend;
+30         
+31         *%discard(tables=temp);
+32         
+33         %discard(tables=skp1allPlusKeysplusCilinders crm3allPlusKeys);
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS.
+NOTE: DATA statement used (Total process time):
+      real time           4:03.85
+      cpu time            3:27.69
+      
+
+DROPLIST=d514 d515 d516 d517 d552 d553 d554 d555 d556 d557 d558 d559 d560 d561 d562 d563 d564 d576 d577 d578 d579 d580 
+bSlijpsteenComponentTypeId tRedenTeHogeSlijptijd tSlijpkurve bRedenTeHogeSlijptijd bSlijpkurve
+
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS.
+NOTE: The data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS has 5740392 observations and 658 variables.
+NOTE: DATA statement used (Total process time):
+      real time           6:47.54
+      cpu time            1:01.10
+      
+
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+
+NOTE: Variable VName_tCilinderDiameterEindeAuto already exists on file WORK.SUMM, using VName_tCilinderDiameterEindeAut2 instead.
+NOTE: Variable Label_tCilinderDiameterEindeAuto already exists on file WORK.SUMM, using Label_tCilinderDiameterEindeAut2 instead.
+NOTE: Variable tCilinderDiameterEindeA_StdDev already exists on file WORK.SUMM, using tCilinderDiameterEindeA_StdDev2 instead.
+NOTE: Variable VName_bCilinderDiameterEindeAuto already exists on file WORK.SUMM, using VName_bCilinderDiameterEindeAut2 instead.
+NOTE: Variable Label_bCilinderDiameterEindeAuto already exists on file WORK.SUMM, using Label_bCilinderDiameterEindeAut2 instead.
+NOTE: Variable bCilinderDiameterEindeA_StdDev already exists on file WORK.SUMM, using bCilinderDiameterEindeA_StdDev2 instead.
+NOTE: The data set WORK.SUMM has 1 observations and 1902 variables.
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS.
+NOTE: The PROCEDURE MEANS printed pages 1-12.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           4:19.31
+      cpu time            2:32.14
+3                                                          The SAS System                           10:58 Wednesday, August 10, 2016
+
+      
+
+
+NOTE: There were 1 observations read from the data set WORK.SUMM.
+NOTE: DATA statement used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.01 seconds
+      
+
+DROPLIST_N=d087 d090 d093 d096 d099 d102 d105 d108 d111 d114 d117 d120 d123 d127 d132 d143 d150 d166 d167 d170 d175 d178 d183 d233 
+d234 d235 d239 d240 d241 d242 d243 d244 d245 d246 d247 d251 d301 d302 d303 d304 d307 d310 d311 d312 d321 d322 d323 d356 d359 d362 
+d368 d371 d381 d398 d416 tSlijpmachine tOKVoorWalsNaSlijping tTijdAfwerken tCilinderDiameterEindeA tCilinderDiameterBegin 
+tSlijpsteenComponentTyp tProgrammaOnderbroken tOpharding tAfwerking tLagersTappenOK tHardheid2 tHardheid3 tHardheid4 tHardheid5 
+tSlag tBorgpenHydrMoerOK tFlagMSMQIBM tHardheidTestgrens bSlijpmachine bOKVoorWalsNaSlijping bTijdAfwerken bCilinderDiameterEindeA 
+bCilinderDiameterBegin bProgrammaOnderbroken bOpharding bAfwerking bHardheid2 bHardheid3 bHardheid4 bHardheid5 bBorgpenHydrMoerOK 
+bFlagMSMQIBM bFlagMSMQQE bHardheidTestgrens
+
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS.
+NOTE: The data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS has 5740392 observations and 659 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5:17.49
+      cpu time            59.38 seconds
+      
+
+
+NOTE: The data set WORK.NLEVELS has 25 observations and 5 variables.
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS.
+NOTE: The PROCEDURE FREQ printed page 13.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           5:07.28
+      cpu time            35.96 seconds
+      
+
+
+NOTE: There were 25 observations read from the data set WORK.NLEVELS.
+NOTE: DATA statement used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.01 seconds
+      
+
+DROPLIST_C=_dumc
+
+NOTE: Deleting WORK.SUMM (memtype=DATA).
+
+NOTE: Deleting WORK.NLEVELS (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.00 seconds
+      
+
+
+WARNING: The variable tCilinderDiameterEindeA in the DROP, KEEP, or RENAME list has never been referenced.
+WARNING: The variable tSlijpsteenComponentTyp in the DROP, KEEP, or RENAME list has never been referenced.
+WARNING: The variable bCilinderDiameterEindeA in the DROP, KEEP, or RENAME list has never been referenced.
+NOTE: There were 5740392 observations read from the data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS.
+NOTE: The data set OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS has 5740392 observations and 572 variables.
+NOTE: DATA statement used (Total process time):
+4                                                          The SAS System                           10:58 Wednesday, August 10, 2016
+
+      real time           4:33.30
+      cpu time            55.32 seconds
+      
+
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+
+NOTE: There were 7629412 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: DATA statement used (Total process time):
+      real time           6:25.34
+      cpu time            2:40.27
+      
+
+DROPLIST=d391 d392 d393 d394 d395 d396 d397 d398 d399 d400
+
+NOTE: There were 7629412 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629412 observations and 396 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:10.29
+      cpu time            43.86 seconds
+      
+
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+
+NOTE: The data set WORK.SUMM has 1 observations and 1185 variables.
+NOTE: There were 7629412 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The PROCEDURE MEANS printed pages 14-21.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           50.83 seconds
+      cpu time            1:52.09
+      
+
+
+NOTE: There were 1 observations read from the data set WORK.SUMM.
+NOTE: DATA statement used (Total process time):
+      real time           1.78 seconds
+      cpu time            0.01 seconds
+      
+
+DROPLIST_N=d032 d047 d131 d132 d291 d312
+
+NOTE: There were 7629412 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629412 observations and 397 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5:16.60
+      cpu time            45.05 seconds
+      
+
+
+NOTE: The data set WORK.NLEVELS has 2 observations and 3 variables.
+NOTE: There were 7629412 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The PROCEDURE FREQ printed page 22.
+5                                                          The SAS System                           10:58 Wednesday, August 10, 2016
+
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           22.84 seconds
+      cpu time            16.20 seconds
+      
+
+
+NOTE: There were 2 observations read from the data set WORK.NLEVELS.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.02 seconds
+      
+
+DROPLIST_C=_dumc
+
+NOTE: Deleting WORK.SUMM (memtype=DATA).
+
+NOTE: Deleting WORK.NLEVELS (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.18 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 7629412 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629412 observations and 390 variables.
+NOTE: DATA statement used (Total process time):
+      real time           6:30.06
+      cpu time            45.17 seconds
+      
+
+240        
+241        /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           53:15.80
+      cpu time            16:34.43
+      

@@ -10,3 +10,14 @@ data ousaslib.skp1small;
 run;
 
 proc print data=insaslib.skp1_sigdef; run;
+
+proc print data=ousaslib.skp1allplusKeysplusCilinders1(obs=2); run;
+
+proc print data=ousaslib.skp1walsplusKeys(obs=10); * keep=	cl_n bew_vn dch_n ts_registratie 
+																	ts_be ts_ei 
+																	teinddatum teinddatumskp
+																	beinddatum beinddatumskp
+																	d417 d418
+																	tComponentName bComponentName); run;
+																	
+proc contents data=ousaslib.skp1walsplusKeys; run;
