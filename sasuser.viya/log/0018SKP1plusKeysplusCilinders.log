@@ -1,4 +1,4 @@
-1                                                          The SAS System                              14:07 Tuesday, August 9, 2016
+1                                                          The SAS System                              17:06 Tuesday, August 9, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -38,7 +38,7 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           0.04 seconds
+      real time           0.02 seconds
       cpu time            0.03 seconds
       
 1          *;
@@ -58,7 +58,7 @@ NOTE: Libref OUSASLIB was successfully assigned as follows:
 9          *proc sort 	data=insaslib.skp_cilinders
 10         *			out=ousaslib.skp_cilinders; /* All unique, cf. 0007AreCilinderKeysUnique.sas */
 11         *	by einddatum einddatumskp; /* The logs should be non-overlapping, so actually, einddatumskp is obsolete here. */
-2                                                          The SAS System                              14:07 Tuesday, August 9, 2016
+2                                                          The SAS System                              17:06 Tuesday, August 9, 2016
 
 12         *run;
 13         
@@ -88,343 +88,276 @@ NOTE: Libref OUSASLIB was successfully assigned as follows:
 37         options fullstimer;
 38         %let t = %sysfunc(datetime());
 39         
-40         data ousaslib.skp_cilinders;
-41         	set insaslib.skp_cilinders;
-NOTE: Data file INSASLIB.SKP_CILINDERS.DATA is in a format that is native to another host, or the file encoding does not match the 
-      session encoding. Cross Environment Data Access will be used, which might require additional CPU resources and might reduce 
-      performance.
-42         	ComponentDigits = input(substr(ComponentName,length(ComponentName)-1,2),2.0);
-43         run;
-
-NOTE: There were 1443 observations read from the data set INSASLIB.SKP_CILINDERS.
-NOTE: The data set OUSASLIB.SKP_CILINDERS has 1443 observations and 49 variables.
-NOTE: DATA statement used (Total process time):
-      real time           0.24 seconds
-      user cpu time       0.02 seconds
-      system cpu time     0.01 seconds
-      memory              1603.68k
-      OS Memory           8352.00k
-      Timestamp           09/08/2016 02:07:56 PM
-      Step Count                        1  Switch Count  0
-      Page Faults                       1
-      Page Reclaims                     1267
-      Page Swaps                        0
-      Voluntary Context Switches        6
-      Involuntary Context Switches      0
-      Block Input Operations            1592
-      Block Output Operations           1544
-      
-
+40         *data ousaslib.skp_cilinders;
+41         *	set insaslib.skp_cilinders;
+42         *	ComponentDigits = input(substr(ComponentName,length(ComponentName)-1,2),2.0);
+43         *run;
 44         
 45         /* Create macros to rename variables in skp_cilinders for T (top) and B (bottom) side. */
 46         proc contents data=ousaslib.skp_cilinders out=varnames;
-3                                                          The SAS System                              14:07 Tuesday, August 9, 2016
-
 
 NOTE: The data set WORK.VARNAMES has 49 observations and 41 variables.
 NOTE: The PROCEDURE CONTENTS printed pages 1-2.
 NOTE: PROCEDURE CONTENTS used (Total process time):
-      real time           0.08 seconds
+      real time           0.04 seconds
       user cpu time       0.04 seconds
       system cpu time     0.01 seconds
-      memory              3169.76k
-      OS Memory           10400.00k
-      Timestamp           09/08/2016 02:07:56 PM
-      Step Count                        2  Switch Count  1
-      Page Faults                       2
-      Page Reclaims                     1427
+      memory              3470.09k
+      OS Memory           10144.00k
+      Timestamp           09/08/2016 05:06:16 PM
+      Step Count                        1  Switch Count  1
+      Page Faults                       0
+      Page Reclaims                     2013
       Page Swaps                        0
-      Voluntary Context Switches        7
+      Voluntary Context Switches        2
       Involuntary Context Switches      0
-      Block Input Operations            640
+      Block Input Operations            0
       Block Output Operations           160
       
 
 47         data _null_;
 48         	length _Tvars $6000 _Bvars $6000;
 49         	retain _Tvars _Bvars ;
+3                                                          The SAS System                              17:06 Tuesday, August 9, 2016
+
 50         	set varnames end=last;
-51         	_Tvars = catx( " ", _Tvars, catx( "=", name, catx('_', name, 'T') ) ) ;
-52         	_Bvars = catx( " ", _Bvars, catx( "=", name, catx('_', name, 'B') ) ) ;
+51         	_Tvars = catx( " ", _Tvars, catx( "=", name, 't'||strip(name) ) ) ;
+52         	_Bvars = catx( " ", _Bvars, catx( "=", name, 'b'||strip(name) ) ) ;
 53         	if last then do;
-54         		call symputx("toplist", _Tvars);			call symputx("bottomlist", _Bvars);
-55         	end;
-56         run;
+54         		call symputx("toplist", _Tvars);			
+55         		call symputx("bottomlist", _Bvars);
+56         	end;
+57         run;
 
 NOTE: There were 49 observations read from the data set WORK.VARNAMES.
 NOTE: DATA statement used (Total process time):
-      real time           0.04 seconds
-      user cpu time       0.01 seconds
+      real time           0.00 seconds
+      user cpu time       0.00 seconds
       system cpu time     0.00 seconds
-      memory              992.53k
+      memory              1141.56k
       OS Memory           10656.00k
-      Timestamp           09/08/2016 02:07:57 PM
-      Step Count                        3  Switch Count  0
-      Page Faults                       1
-      Page Reclaims                     364
+      Timestamp           09/08/2016 05:06:16 PM
+      Step Count                        2  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     733
       Page Swaps                        0
-      Voluntary Context Switches        2
+      Voluntary Context Switches        0
       Involuntary Context Switches      0
-      Block Input Operations            640
+      Block Input Operations            0
       Block Output Operations           0
       
 
-57         
-58         data ousaslib.skp_cilinders_T(rename=(&toplist.)) ousaslib.skp_cilinders_B(rename=(&bottomlist.));
-NOTE: Line generated by the macro variable "TOPLIST".
-58          CilinderDiameterEindeAutoRechts=CilinderDiameterEindeAutoRechts_T CilinderDiameterEindeMan=CilinderDiameterEindeMan_T
-                                            _________________________________
-                                            213
-58       ! CodeSlijpReden=CodeSlijpReden_T ComponentDigits=ComponentDigits_T ComponentId=ComponentId_T ComponentName=ComponentName_T
-NOTE 138-205: Line generated by the macro variable "TOPLIST".
-58          CilinderDiameterEindeAutoRechts=CilinderDiameterEindeAutoRechts_T CilinderDiameterEindeMan=CilinderDiameterEindeMan_T
-4                                                          The SAS System                              14:07 Tuesday, August 9, 2016
+58         
+59         %put &=toplist.; %put &=bottomlist.;
+TOPLIST=Afname=tAfname Afwerking=tAfwerking BeginDatum=tBeginDatum Bolvorm=tBolvorm BorgpenHydrMoerOK=tBorgpenHydrMoerOK 
+CilinderDiameterBegin=tCilinderDiameterBegin CilinderDiameterEindeAutoLinks=tCilinderDiameterEindeAutoLinks 
+CilinderDiameterEindeAutoRechts=tCilinderDiameterEindeAutoRechts CilinderDiameterEindeMan=tCilinderDiameterEindeMan 
+CodeSlijpReden=tCodeSlijpReden ComponentDigits=tComponentDigits ComponentId=tComponentId ComponentName=tComponentName 
+EindDatum=tEindDatum FlagMSMQIBM=tFlagMSMQIBM FlagMSMQQE=tFlagMSMQQE Hardheid=tHardheid Hardheid2=tHardheid2 Hardheid3=tHardheid3 
+Hardheid4=tHardheid4 Hardheid5=tHardheid5 HardheidTestgrens=tHardheidTestgrens HistoryId=tHistoryId HistoryTime=tHistoryTime 
+LagersTappenOK=tLagersTappenOK OKVoorWals=tOKVoorWals OKVoorWalsNaSlijping=tOKVoorWalsNaSlijping Opharding=tOpharding 
+Opligtijd=tOpligtijd Pause=tPause ProgrammaNaam=tProgrammaNaam ProgrammaOnderbroken=tProgrammaOnderbroken 
+RedenTeHogeSlijptijd=tRedenTeHogeSlijptijd Ruwheid=tRuwheid Slag=tSlag SlijpOpmerking=tSlijpOpmerking SlijpTijd=tSlijpTijd 
+SlijpTijdUUMMSS=tSlijpTijdUUMMSS Slijpkurve=tSlijpkurve Slijpmachine=tSlijpmachine 
+SlijpsteenComponentTypeId=tSlijpsteenComponentTypeId SlijpsteenDiameter=tSlijpsteenDiameter TijdAfruwen=tTijdAfruwen 
+TijdAfruwenUUMMSS=tTijdAfruwenUUMMSS TijdAfwerken=tTijdAfwerken TijdAfwerkenUUMMSS=tTijdAfwerkenUUMMSS 
+WerkNummerAfname=tWerkNummerAfname WerkNummerSlijp=tWerkNummerSlijp einddatumskp=teinddatumskp
+BOTTOMLIST=Afname=bAfname Afwerking=bAfwerking BeginDatum=bBeginDatum Bolvorm=bBolvorm BorgpenHydrMoerOK=bBorgpenHydrMoerOK 
+CilinderDiameterBegin=bCilinderDiameterBegin CilinderDiameterEindeAutoLinks=bCilinderDiameterEindeAutoLinks 
+CilinderDiameterEindeAutoRechts=bCilinderDiameterEindeAutoRechts CilinderDiameterEindeMan=bCilinderDiameterEindeMan 
+CodeSlijpReden=bCodeSlijpReden ComponentDigits=bComponentDigits ComponentId=bComponentId ComponentName=bComponentName 
+EindDatum=bEindDatum FlagMSMQIBM=bFlagMSMQIBM FlagMSMQQE=bFlagMSMQQE Hardheid=bHardheid Hardheid2=bHardheid2 Hardheid3=bHardheid3 
+Hardheid4=bHardheid4 Hardheid5=bHardheid5 HardheidTestgrens=bHardheidTestgrens HistoryId=bHistoryId HistoryTime=bHistoryTime 
+LagersTappenOK=bLagersTappenOK OKVoorWals=bOKVoorWals OKVoorWalsNaSlijping=bOKVoorWalsNaSlijping Opharding=bOpharding 
+Opligtijd=bOpligtijd Pause=bPause ProgrammaNaam=bProgrammaNaam ProgrammaOnderbroken=bProgrammaOnderbroken 
+RedenTeHogeSlijptijd=bRedenTeHogeSlijptijd Ruwheid=bRuwheid Slag=bSlag SlijpOpmerking=bSlijpOpmerking SlijpTijd=bSlijpTijd 
+SlijpTijdUUMMSS=bSlijpTijdUUMMSS Slijpkurve=bSlijpkurve Slijpmachine=bSlijpmachine 
+SlijpsteenComponentTypeId=bSlijpsteenComponentTypeId SlijpsteenDiameter=bSlijpsteenDiameter TijdAfruwen=bTijdAfruwen 
+TijdAfruwenUUMMSS=bTijdAfruwenUUMMSS TijdAfwerken=bTijdAfwerken TijdAfwerkenUUMMSS=bTijdAfwerkenUUMMSS 
+WerkNummerAfname=bWerkNummerAfname WerkNummerSlijp=bWerkNummerSlijp einddatumskp=beinddatumskp
+60         
+61         data ousaslib.skp_cilinders_T(rename=(&toplist.)) ousaslib.skp_cilinders_B(rename=(&bottomlist.));
+62         	set ousaslib.skp_cilinders;
+4                                                          The SAS System                              17:06 Tuesday, August 9, 2016
 
-                                            _________________________________
-                                            23
-58       ! CodeSlijpReden=CodeSlijpReden_T ComponentDigits=ComponentDigits_T ComponentId=ComponentId_T ComponentName=ComponentName_T
-ERROR 213-322: Variable name CilinderDiameterEindeAutoRechts_T is longer than 32 characters.
+63         run;
 
-ERROR 23-7: Invalid value for the RENAME option.
-
-NOTE: Line generated by the macro variable "BOTTOMLIST".
-58          CilinderDiameterEindeAutoRechts=CilinderDiameterEindeAutoRechts_B CilinderDiameterEindeMan=CilinderDiameterEindeMan_B
-                                            _________________________________
-                                            213
-58       ! CodeSlijpReden=CodeSlijpReden_B ComponentDigits=ComponentDigits_B ComponentId=ComponentId_B ComponentName=ComponentName_B
-NOTE 138-205: Line generated by the macro variable "BOTTOMLIST".
-58          CilinderDiameterEindeAutoRechts=CilinderDiameterEindeAutoRechts_B CilinderDiameterEindeMan=CilinderDiameterEindeMan_B
-                                            _________________________________
-                                            23
-58       ! CodeSlijpReden=CodeSlijpReden_B ComponentDigits=ComponentDigits_B ComponentId=ComponentId_B ComponentName=ComponentName_B
-ERROR 213-322: Variable name CilinderDiameterEindeAutoRechts_B is longer than 32 characters.
-
-ERROR 23-7: Invalid value for the RENAME option.
-
-59         	set ousaslib.skp_cilinders;
-60         run;
-
-NOTE: The SAS System stopped processing this step because of errors.
+NOTE: There were 1443 observations read from the data set OUSASLIB.SKP_CILINDERS.
+NOTE: The data set OUSASLIB.SKP_CILINDERS_T has 1443 observations and 49 variables.
+NOTE: The data set OUSASLIB.SKP_CILINDERS_B has 1443 observations and 49 variables.
 NOTE: DATA statement used (Total process time):
-      real time           0.00 seconds
-      user cpu time       0.00 seconds
-      system cpu time     0.00 seconds
-      memory              623.06k
-      OS Memory           10656.00k
-      Timestamp           09/08/2016 02:07:57 PM
-      Step Count                        4  Switch Count  0
-      Page Faults                       0
-      Page Reclaims                     231
-      Page Swaps                        0
-      Voluntary Context Switches        0
-      Involuntary Context Switches      0
-      Block Input Operations            0
-      Block Output Operations           0
-      
-
-61         
-62         proc ds2;
-63         	data ousaslib.skp1allplusKeysplusCilinders1(overwrite=yes);
-64         	method run();
-65         		set { select *
-66         			  from ousaslib.skp1allplusKeys a
-67               		  left join ousaslib.skp_cilinders_T b
-68               		  on (
-69               		  		(b.ComponentDigits_T = a.d417)
-70               		  and 	
-71               		  		(b.einddatum_T <= a.ts_registratie <= b.einddatumskp_T)
-72               		  	 )
-73          			  order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie
-74         			};
-75         		if 1=1 then output ousaslib.skp1allplusKeysplusCilinders1;
-76         	    end;
-5                                                          The SAS System                              14:07 Tuesday, August 9, 2016
-
-77         	enddata;
-78         	run;
-ERROR: Compilation error.
-ERROR: BASE driver, Table SKP_CILINDERS_T does not exist or cannot be accessed or created
-ERROR: Table "OUSASLIB.SKP_CILINDERS_T" does not exist or cannot be accessed
-ERROR: Line 65: Unable to prepare SELECT statement for table { select * 
- from ousaslib.skp1allplusKeys a 
- left join 
-       ousaslib.skp_cilinders_T b 
- on ( 
- (b.ComponentDigits_T = a.d417) 
- and 
- (b.einddatum_T <= a.ts_registratie <= 
-       b.einddatumskp_T) 
- ) 
- order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie 
- } (rc=0x80fff802U).
-NOTE: PROC DS2 has set option NOEXEC and will continue to prepare statements.
-79         quit;
-
-NOTE: The SAS System stopped processing this step because of errors.
-NOTE: PROCEDURE DS2 used (Total process time):
-      real time           1.40 seconds
-      user cpu time       0.02 seconds
-      system cpu time     0.03 seconds
-      memory              3234.20k
-      OS Memory           13224.00k
-      Timestamp           09/08/2016 02:07:58 PM
-      Step Count                        5  Switch Count  2
-      Page Faults                       38
-      Page Reclaims                     2541
-      Page Swaps                        0
-      Voluntary Context Switches        120
-      Involuntary Context Switches      0
-      Block Input Operations            35024
-      Block Output Operations           0
-      
-80         
-
-
-81         proc ds2;
-82         	data ousaslib.skp1allplusKeysplusCilinders(overwrite=yes);
-83         	method run();
-84         		set { select *
-85         			  from ousaslib.skp1allplusKeysplusCilinders1 a
-86               		  left join ousaslib.skp_cilinders_B b
-87               		  on (
-88               		  		(b.ComponentDigits_B = a.d418)
-89               		  and 	
-90               		  		(b.einddatum_B <= a.ts_registratie <= b.einddatumskp_B)
-91               		  	 )
-92          			  order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie
-93         			};
-94         		if 1=1 then output ousaslib.skp1allplusKeysplusCilinders;
-95         	    end;
-96         	enddata;
-97         	run;
-ERROR: Compilation error.
-ERROR: BASE driver, Table SKP1ALLPLUSKEYSPLUSCILINDERS1 does not exist or cannot be accessed or created
-ERROR: Table "OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS1" does not exist or cannot be accessed
-ERROR: Line 84: Unable to prepare SELECT statement for table { select * 
- from ousaslib.skp1allplusKeysplusCilinders1 a 
- left join 
-       ousaslib.skp_cilinders_B b 
- on ( 
- (b.ComponentDigits_B = a.d418) 
- and 
- (b.einddatum_B <= a.ts_registratie <= 
-       b.einddatumskp_B) 
- ) 
- order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie 
- } (rc=0x80fff802U).
-NOTE: PROC DS2 has set option NOEXEC and will continue to prepare statements.
-98         quit;
-
-NOTE: The SAS System stopped processing this step because of errors.
-6                                                          The SAS System                              14:07 Tuesday, August 9, 2016
-
-NOTE: PROCEDURE DS2 used (Total process time):
       real time           0.01 seconds
-      user cpu time       0.02 seconds
-      system cpu time     0.00 seconds
-      memory              2465.96k
-      OS Memory           12708.00k
-      Timestamp           09/08/2016 02:07:58 PM
-      Step Count                        6  Switch Count  2
+      user cpu time       0.01 seconds
+      system cpu time     0.01 seconds
+      memory              1128.68k
+      OS Memory           10912.00k
+      Timestamp           09/08/2016 05:06:16 PM
+      Step Count                        3  Switch Count  0
       Page Faults                       0
-      Page Reclaims                     1630
-      Page Swaps                        0
-      Voluntary Context Switches        18
-      Involuntary Context Switches      0
-      Block Input Operations            0
-      Block Output Operations           0
-      
-99         
-
-
-100        proc datasets library=ousaslib nolist;
-101        	delete skp_cilinders_T skp_cilinders_B skp1allplusKeysplusCilinders1 / memtype=data;
-102        run;
-
-NOTE: The file OUSASLIB.SKP_CILINDERS_T (memtype=DATA) was not found, but appears on a DELETE statement.
-NOTE: The file OUSASLIB.SKP_CILINDERS_B (memtype=DATA) was not found, but appears on a DELETE statement.
-NOTE: The file OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS1 (memtype=DATA) was not found, but appears on a DELETE statement.
-103        
-104        %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-### 1.84975004196167
-105        
-106        /* end of program */
-107        
-108        /* test code */
-109        
-110        /*
-111        data work.cil;
-112        	length ComponentName $ 45;
-113        	input ComponentName $30.;
-114        	ComponentDigits = input(substr(ComponentName,length(ComponentName)-1,2),2.0);
-115        datalines;
-116        POSB10
-117        PUE62
-118        ;
-119        run;
-120        
-121        data work.skp
-122        	length d417;
-123        	input d417 9.2;
-124        datalines;
-125        0.0
-126        0.0
-127        10.0
-128        62.0
-129        48.0
-130        62.0
-131        ;
-132        run;
-133        
-7                                                          The SAS System                              14:07 Tuesday, August 9, 2016
-
-134        proc ds2;
-135        	data work.merged(overwrite=yes);
-136        	method run();
-137        		set { select *
-138        			  from work.skp a
-139              		  left join work.cil b
-140              		  on b.ComponentDigits = a.d417
-141        			};
-142        		if 1=1 then output work.merged;
-143        	    end;
-144        	enddata;
-145        	run;
-146        quit;
-147        */
-NOTE: PROCEDURE DATASETS used (Total process time):
-      real time           0.00 seconds
-      user cpu time       0.00 seconds
-      system cpu time     0.00 seconds
-      memory              248.59k
-      OS Memory           12192.00k
-      Timestamp           09/08/2016 02:07:58 PM
-      Step Count                        7  Switch Count  0
-      Page Faults                       0
-      Page Reclaims                     43
+      Page Reclaims                     345
       Page Swaps                        0
       Voluntary Context Switches        0
       Involuntary Context Switches      0
       Block Input Operations            0
-      Block Output Operations           8
+      Block Output Operations           3600
       
 
-ERROR: Errors printed on pages 3,4,5.
+64         
+65         /*proc sql;
+66         	create table ousaslib.skp1allplusKeysplusCilinders1
+67         	as select a.*, b.*
+68         	from ousaslib.skp1allplusKeys a
+69             left join ousaslib.skp_cilinders_T b
+70             on (
+71               	(b.tComponentDigits = a.d417)
+72             and 	
+73                 (b.teinddatum <= a.ts_registratie and a.ts_registratie <= b.teinddatumskp)
+74                 );
+75         quit;*/
+76         
+77         
+78         proc sql;
+79         	create table ousaslib.skp1allplusKeysplusCilinders
+80         	as select a.*, b.*
+81         	from ousaslib.skp1allplusKeysplusCilinders1 a
+82             left join ousaslib.skp_cilinders_B b
+83             on (
+84               	(b.bComponentDigits = a.d417)
+85             and 	
+86                 (b.beinddatum <= a.ts_registratie and a.ts_registratie <= b.beinddatumskp)
+87                 );
+NOTE: Table OUSASLIB.SKP1ALLPLUSKEYSPLUSCILINDERS created, with 5740392 rows and 685 columns.
+
+88          			  /*order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie*/
+89         quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           11:44.27
+      user cpu time       51.06 seconds
+      system cpu time     51.78 seconds
+      memory              22395.67k
+      OS Memory           33548.00k
+      Timestamp           09/08/2016 05:18:00 PM
+      Step Count                        4  Switch Count  0
+5                                                          The SAS System                              17:06 Tuesday, August 9, 2016
+
+      Page Faults                       5
+      Page Reclaims                     1591
+      Page Swaps                        0
+      Voluntary Context Switches        11686
+      Involuntary Context Switches      380
+      Block Input Operations            40100712
+      Block Output Operations           66799776
+      
+
+90         
+91         /* The code below does not work.
+92            See also: 0018SKP1plusKeysplusCilinders_ERROR.log */
+93         /*proc ds2;
+94         	data ousaslib.skp1allplusKeysplusCilinders1(overwrite=yes);
+95         	method run();
+96         		set { select *
+97         			  from ousaslib.skp1allplusKeys a
+98               		  left join ousaslib.skp_cilinders_T b
+99               		  on (
+100              		  		(b.tComponentDigits = a.d417)
+101              		  and 	
+102              		  		(b.teinddatum <= a.ts_registratie and a.ts_registratie <= b.teinddatumskp)
+103              		  	 )
+104         			  order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie
+105        			};
+106        		if 1=1 then output ousaslib.skp1allplusKeysplusCilinders1;
+107        	    end;
+108        	enddata;
+109        	run;
+110        quit;
+111        
+112        proc ds2;
+113        	data ousaslib.skp1allplusKeysplusCilinders(overwrite=yes);
+114        	method run();
+115        		set { select *
+116        			  from ousaslib.skp1allplusKeysplusCilinders1 a
+117              		  left join ousaslib.skp_cilinders_B b
+118              		  on (
+119              		  		(b.ComponentDigits_B = a.d418)
+120              		  and 	
+121              		  		(b.beinddatum <= a.ts_registratie and a.ts_registratie <= b.beinddatumskp)
+122              		  	 )
+123         			  order by a.cl_n, a.bew_vn, a.dch_n, a.ts_registratie
+124        			};
+125        		if 1=1 then output ousaslib.skp1allplusKeysplusCilinders;
+126        	    end;
+127        	enddata;
+128        	run;
+129        quit;
+130        
+131        proc datasets library=ousaslib nolist;
+132        	delete skp_cilinders_T skp_cilinders_B skp1allplusKeysplusCilinders1 / memtype=data;
+133        run;*/
+134        
+135        %put ### %sysevalf( %sysfunc(datetime()) - &t. );
+### 704.350359916687
+136        
+137        /* end of program */
+6                                                          The SAS System                              17:06 Tuesday, August 9, 2016
+
+138        
+139        /* test code */
+140        
+141        /*
+142        data work.cil;
+143        	length ComponentName $ 45;
+144        	input ComponentName $30.;
+145        	ComponentDigits = input(substr(ComponentName,length(ComponentName)-1,2),2.0);
+146        datalines;
+147        POSB10
+148        PUE62
+149        ;
+150        run;
+151        
+152        data work.skp
+153        	length d417;
+154        	input d417 9.2;
+155        datalines;
+156        0.0
+157        0.0
+158        10.0
+159        62.0
+160        48.0
+161        62.0
+162        ;
+163        run;
+164        
+165        proc ds2;
+166        	data work.merged(overwrite=yes);
+167        	method run();
+168        		set { select *
+169        			  from work.skp a
+170              		  left join work.cil b
+171              		  on b.ComponentDigits = a.d417
+172        			};
+173        		if 1=1 then output work.merged;
+174        	    end;
+175        	enddata;
+176        	run;
+177        quit;
+178        */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           1.91 seconds
-      user cpu time       0.13 seconds
-      system cpu time     0.06 seconds
-      memory              11616.59k
-      OS Memory           13224.00k
-      Timestamp           09/08/2016 02:07:58 PM
-      Step Count                        7  Switch Count  44
-      Page Faults                       45
-      Page Reclaims                     13086
+      real time           11:44.37
+      user cpu time       51.14 seconds
+      system cpu time     51.81 seconds
+      memory              30722.59k
+      OS Memory           33548.00k
+      Timestamp           09/08/2016 05:18:00 PM
+      Step Count                        4  Switch Count  18
+      Page Faults                       5
+      Page Reclaims                     10270
       Page Swaps                        0
-      Voluntary Context Switches        227
-      Involuntary Context Switches      3
-      Block Input Operations            38816
-      Block Output Operations           1776
+      Voluntary Context Switches        11755
+      Involuntary Context Switches      383
+      Block Input Operations            40100712
+      Block Output Operations           66803592
+7                                                          The SAS System                              17:06 Tuesday, August 9, 2016
+
       
