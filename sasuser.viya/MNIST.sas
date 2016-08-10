@@ -8,7 +8,7 @@ proc casutil incaslib="casuser";
 	list tables;
 run;
 
-proc contents data=mycas.mnist; run;
+proc contents data=mycas.mnist_train; run;
 
 %let height=28;
 %let width=28;
@@ -26,19 +26,23 @@ data work.long;
 		do j=1 to &width.;
 			x = j-1;
 			k = (i-1)*&width.+j;
-			if (d{k} gt 0) then output;
+			z = d{k};
+			output;
+			*if (z gt 0) then output;
 		end;
 	end;
-	keep x y;
+	keep x y z;
 run;
 
-ods graphics on;* / scale=on;
+ods graphics on / scale=on;
 title "The MNIST Data";
 proc sgplot data=work.long; 
 	scatter x=x y=y /
+		colorresponse=z
 		markerattrs=(size=30pt symbol=squarefilled)
 		transparency=0.3;
-	xaxis display=none; yaxis display=none; 
+	xaxis display=none; yaxis display=none;
+	gradlegend / notitle;
 run;
 ods _all_ close;
 

@@ -1,15 +1,20 @@
 /* ~/.authinfo is used to connect to CAS */
-options cashost="rdcgrd001.unx.sas.com" casport=47886 casuser="europe\sbxjen";
+options cashost="rdcgrd001.unx.sas.com" casport=47885 casuser="europe\sbxjen";
 cas mysess sessopts=(nworkers=100) uuidmac=uuid;
 %put &uuid.;
 
 /* Reference the CAS library */
 %let mycaslib = casuserhdfs;
+%let mycaslib = casuser;
 %let caslibname = mycas;
 libname &caslibname. cas caslib="&mycaslib.";
 
 proc casutil incaslib="&mycaslib.";
 	list files;
+run;
+
+proc casutil incaslib="&mycaslib.";
+	list tables;
 run;
 
 /* end of program */
