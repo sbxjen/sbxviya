@@ -5,8 +5,12 @@ libname ousaslib "/tmp/v94/";
 
 data ousaslib.skp1small;
 	set ousaslib.skp1walsplusKeys(obs=2000);
-	keep cl_n bew_vn dch_n ts_registratie d324 d382 d522 d523 d524 _deel _x _pol KeyCol;
-	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
+	*keep cl_n bew_vn dch_n ts_registratie d324 d382 d522 d523 d524 _deel _x _pol KeyCol;
+	*KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
+run;
+
+data ousaslib.skp1walsplusKeys2; 
+	set ousaslib.skp1walsplusKeys;
 run;
 
 proc print data=insaslib.skp1_sigdef; run;
@@ -20,4 +24,24 @@ proc print data=ousaslib.skp1walsplusKeys(obs=10); * keep=	cl_n bew_vn dch_n ts_
 																	d417 d418
 																	tComponentName bComponentName); run;
 																	
-proc contents data=ousaslib.skp1walsplusKeys; run;
+proc print data=ousaslib.skp1small(keep=cl_n dch_n bew_vn _deel); run;
+
+data work.class(drop=Sex);
+	set sashelp.class;
+	KeyCol = Sex;
+run;
+
+proc sort data=work.class;
+	by KeyCol;
+run;
+
+data work.class_NOINTERVAL;
+	set work.class;
+run;
+
+data work.class_NOINTERVAL;
+	set work.class;
+run;
+
+%let inputdsn=work.class;
+%let nomlist=Age Weight;

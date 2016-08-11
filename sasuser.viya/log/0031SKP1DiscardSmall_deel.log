@@ -1,0 +1,138 @@
+1                                                          The SAS System                            09:30 Thursday, August 11, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          *;
+2          libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          options nosymbolgen;
+7          
+8          %let inputdsn=ousaslib.skp1walsplusKeys;
+9          %let KeyColumns=cl_n bew_vn dch_n _deel;
+10         
+11         data &inputdsn.;
+2                                                          The SAS System                            09:30 Thursday, August 11, 2016
+
+12         	set &inputdsn.;
+13         	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
+14         run;
+
+NOTE: There were 1086744 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS has 1086744 observations and 563 variables.
+NOTE: DATA statement used (Total process time):
+      real time           10.27 seconds
+      cpu time            10.28 seconds
+      
+
+15         proc sort data=&inputdsn.;
+16         	by KeyCol;
+17         run;
+
+NOTE: There were 1086744 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS has 1086744 observations and 563 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           38.84 seconds
+      cpu time            35.81 seconds
+      
+
+18         data work._deel;
+19         	set &inputdsn.(keep=KeyCol);
+20         run;
+
+NOTE: There were 1086744 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: The data set WORK._DEEL has 1086744 observations and 1 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.31 seconds
+      cpu time            3.31 seconds
+      
+
+21         data work._deel;
+22           	set work._deel;
+23           	by KeyCol;
+24           	if first.KeyCol then count=0;
+25           	count+1;
+26           	if last.KeyCol then do;
+27           		if (count < 6) then output;
+28           	end;
+29           	drop count;
+30         run;
+
+NOTE: There were 1086744 observations read from the data set WORK._DEEL.
+NOTE: The data set WORK._DEEL has 3884 observations and 1 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.30 seconds
+      cpu time            0.31 seconds
+      
+
+31         data &inputdsn.2;
+32         	merge &inputdsn.(in=a) work._deel(in=b);
+33         	by KeyCol;
+34         	if not b;
+35         	drop KeyCol;
+36         run;
+
+3                                                          The SAS System                            09:30 Thursday, August 11, 2016
+
+NOTE: There were 1086744 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: There were 3884 observations read from the data set WORK._DEEL.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS2 has 1074903 observations and 562 variables.
+NOTE: DATA statement used (Total process time):
+      real time           13.84 seconds
+      cpu time            8.81 seconds
+      
+
+37         
+38         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           1:06.61
+      cpu time            58.54 seconds
+      
