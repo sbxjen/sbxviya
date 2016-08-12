@@ -66,6 +66,9 @@ run;
 		data work.tmp;
 			set &inputdsn._INTERVAL(keep=KeyCol &int.);
 		run;
+		proc sort data=work.tmp;
+			by KeyCol;
+		run;
 		
 		data Means(drop=&int. Mean stddev x: i j);
 			array x{3000}; 
@@ -207,7 +210,6 @@ run;
 		proc sort data=work.tmp;
 			by KeyCol &nom.;
 		run;
-		
 		data Modes(drop=freq maxfreq mode);
 	  		do until (last.KeyCol);
 	    		set work.tmp;
