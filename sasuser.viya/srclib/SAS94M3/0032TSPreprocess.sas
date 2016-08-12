@@ -7,16 +7,18 @@ libname ousaslib "/tmp/v94/";
 
 /* Input data set (e.g. ousaslib.skp1walsplusKeys) */
 *%let inputdsn=ousaslib.skp1small;
-%let inputdsn=ousaslib.skp1walsplusKeys;
-*%let inputdsn=ousaslib.crm3allplusKeys;
+*%let inputdsn=ousaslib.skp1walsplusKeys;
+%let inputdsn=ousaslib.crm3allplusKeys;
 
 /* Key columns in inputdsn: BY variables for PROC EXPAND, PROC TRANSREG ... */
-%let KeyCols=cl_n bew_vn dch_n _deel;
+%let KeyCols=cl_n bew_vn dch_n; *_deel;
 *%let KeyCols=cl_n bew_vn dch_n;
 /* time ID in inputdsn for PROC EXPAND, PROC TRANSREG ... */
 %let t=ts_registratie;
-/* ID columns AND target variable in inputdsn: these are not treated as interval variables. */
-%let IDCols=('ts_registratie', 'cl_n', 'bew_vn', 'dch_n', 'ts_be', 'ts_ei', 'd524');
+/* TARGET column */
+%let target=d524;
+/* ID columns AND TARGET variable in inputdsn: these are not treated as ordinary interval variables here. */
+%let IDCols=("ts_registratie", "cl_n", "bew_vn", "dch_n", "ts_be", "ts_ei", "&target.");
 
 /*proc format;
 	value missfmt . ='Missing' other='Not Missing';
@@ -86,12 +88,14 @@ run;*/
 		format _numeric_ missfmt.;
 		tables &y. &y.f / missing missprint nocum nopercent;
 	run;*/
-	
+
+/*  For INPUT variables */
 	data &dsn.;
 		merge &dsn. work.full(keep=&KeyCol. &t. &y.f rename=(&y.f=P_&y.));
 		by &KeyCol. &t.;
 	run;
-	
+
+/*  For TARGET variable */
 /*	options nonotes;
 	proc transreg data=work.full noprint plots=none;
 		by &KeyCol.;
@@ -124,7 +128,7 @@ run;*/
 
 	%let nvar=%sysfunc(countw(&intlist.,%str( )));
 	
-	%do  ivar=1 %to &nvar.;
+	%do ivar=1 %to &nvar.;
 		%let yvar=%scan(&intlist.,&ivar.);
 		%preprocess(dsn=&inputdsn., y=&yvar., KeyCol=&KeyCols.);
 	%end;
@@ -132,8 +136,16 @@ run;*/
 %mend;
 /* end of macro */
 
-options source2;
+*options source2;
+
+/* For INPUT variables */
 %preprocess_all();
 
+/* For TARGET variable */
+*%preprocess(dsn=&inputdsn., y=&target., KeyCol=&KeyCols.);
+
+data $inputdsn._PREP;
+	set &inputdsn.(drop=&intlist.);
+run;
 
 /* end of program */

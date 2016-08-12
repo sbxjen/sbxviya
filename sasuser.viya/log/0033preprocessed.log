@@ -1,0 +1,84 @@
+1                                                          The SAS System                              10:26 Friday, August 12, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+2          
+3          %let inputdsn=ousaslib.skp1walsplusKeys;
+4          
+5          %let INTLIST=d003 d004 d005 d006 d007 d008 d012 d013 d014 d015 d016 d017 d018 d019 d020 d021 d022 d023 d024 d025 d026
+5        ! d027 d028 d029
+6          d030 d032 d033 d036 d037 d038 d042 d043 d044 d046 d047 d048 d051 d052 d053 d054 d055 d056 d057 d058 d059 d060 d061 d062
+6        ! d063 d064
+7          d065 d067 d070 d071 d075 d078 d084 d085 d089 d092 d095 d098 d101 d104 d107 d113 d116 d119 d122 d138 d139 d141 d142 d144
+7        ! d145 d147
+8          d148 d149 d151 d153 d154 d155 d156 d157 d158 d159 d160 d161 d162 d163 d164 d165 d168 d171 d173 d176 d179 d220 d221 d222
+8        ! d226 d227
+9          d231 d232 d253 d254 d255 d256 d257 d258 d259 d260 d262 d263 d264 d265 d266 d267 d268 d269 d270 d271 d272 d273 d274 d275
+9        ! d277 d279
+2                                                          The SAS System                              10:26 Friday, August 12, 2016
+
+10         d280 d281 d282 d283 d284 d285 d286 d287 d290 d289 d291 d292 d300 d309 d313 d314 d315 d316 d317 d318 d319 d324 d325 d326
+10       ! d327 d333
+11         d334 d341 d342 d343 d344 d345 d378 d392 d395 d396 d400 d402 d426 d427 d428 d447 d448 d449 d451 d458 d461 d462 d463 d464
+11       ! d469 d470
+12         d471 d472 d473 d474 d475 d476 d477 d483 d484 d486 d487 d512 d513 d521 d522 d523 d525 d526 d527;
+13         
+14         data &inputdsn._PREP;
+15         	set &inputdsn.(drop=&intlist.);
+16         run;
+
+NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP has 1074903 observations and 563 variables.
+NOTE: DATA statement used (Total process time):
+      real time           10.05 seconds
+      cpu time            10.06 seconds
+      
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           10.07 seconds
+      cpu time            10.08 seconds
+      
