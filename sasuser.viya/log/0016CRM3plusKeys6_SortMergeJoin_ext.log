@@ -1,4 +1,4 @@
-1                                                          The SAS System                              11:42 Tuesday, August 9, 2016
+1                                                          The SAS System                            14:41 Saturday, August 13, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -38,8 +38,8 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           9.07 seconds
-      cpu time            0.03 seconds
+      real time           0.02 seconds
+      cpu time            0.02 seconds
       
 1          *;
 2          libname insaslib "/tmp/viya/";
@@ -58,7 +58,7 @@ NOTE: Libref OUSASLIB was successfully assigned as follows:
 9          
 10         /* Sort the resulting matm2 by ts_be */
 11         proc sort data=insaslib.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru ln_pr
-2                                                          The SAS System                              11:42 Tuesday, August 9, 2016
+2                                                          The SAS System                            14:41 Saturday, August 13, 2016
 
 12         		/* where=(a_dch=0 and ln_pr='CRM3')) */
 13         		where=((dl_n_lei = dl_n_leu) and (dl_n_bri = dl_n_bru) and  ln_pr='CRM3'))
@@ -72,114 +72,45 @@ NOTE: There were 35669 observations read from the data set INSASLIB.MATM2.
       WHERE (dl_n_lei=dl_n_leu) and (dl_n_bri=dl_n_bru) and (ln_pr='CRM3');
 NOTE: The data set OUSASLIB.MATM2 has 35669 observations and 5 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           4.02 seconds
-      user cpu time       0.04 seconds
-      system cpu time     0.10 seconds
+      real time           0.67 seconds
+      user cpu time       0.03 seconds
+      system cpu time     0.08 seconds
       memory              5873.90k
       OS Memory           12988.00k
-      Timestamp           09/08/2016 11:43:00 AM
+      Timestamp           13/08/2016 02:41:11 PM
       Step Count                        1  Switch Count  0
-      Page Faults                       10
-      Page Reclaims                     1690
+      Page Faults                       0
+      Page Reclaims                     1700
       Page Swaps                        0
-      Voluntary Context Switches        87
+      Voluntary Context Switches        70
       Involuntary Context Switches      0
-      Block Input Operations            167832
+      Block Input Operations            165904
       Block Output Operations           3480
       
 
 17         
 18         /* Concatenate all crm3_pv* data sets */
-19         data ousaslib.crm3_pv_all;
-20         	set insaslib.crm3_pv_2015q1 insaslib.crm3_pv_2015q2 insaslib.crm3_pv_2015q3 insaslib.crm3_pv_2015q4 insaslib.crm3_pv;
-21         	drop ts_registratie_gmt datum_reg guid;
-22         run;
-
-WARNING: The variable guid in the DROP, KEEP, or RENAME list has never been referenced.
-NOTE: There were 1466059 observations read from the data set INSASLIB.CRM3_PV_2015Q1.
-NOTE: There were 1483654 observations read from the data set INSASLIB.CRM3_PV_2015Q2.
-NOTE: There were 1483644 observations read from the data set INSASLIB.CRM3_PV_2015Q3.
-NOTE: There were 1480555 observations read from the data set INSASLIB.CRM3_PV_2015Q4.
-NOTE: There were 3112977 observations read from the data set INSASLIB.CRM3_PV.
-NOTE: The data set OUSASLIB.CRM3_PV_ALL has 9026889 observations and 401 variables.
-NOTE: DATA statement used (Total process time):
-      real time           27:20.32
-      user cpu time       8.63 seconds
-      system cpu time     48.94 seconds
-      memory              3782.34k
-      OS Memory           11960.00k
-      Timestamp           09/08/2016 12:10:20 PM
-      Step Count                        2  Switch Count  0
-      Page Faults                       6
-      Page Reclaims                     1064
-      Page Swaps                        0
-      Voluntary Context Switches        20685
-      Involuntary Context Switches      164
-      Block Input Operations            57774912
-      Block Output Operations           57772560
-      
-3                                                          The SAS System                              11:42 Tuesday, August 9, 2016
-
-
+19         *data ousaslib.crm3_pv_all;
+20         *	set insaslib.crm3_pv_2015q1 insaslib.crm3_pv_2015q2 insaslib.crm3_pv_2015q3 insaslib.crm3_pv_2015q4 insaslib.crm3_pv;
+21         *	drop ts_registratie_gmt datum_reg guid;
+22         *run;
 23         
 24         /* Sort crm3_pv by ts_registratie */
-25         proc sort data=ousaslib.crm3_pv_all;
-26         	by ts_registratie;	
-27         run;
-
-NOTE: There were 9026889 observations read from the data set OUSASLIB.CRM3_PV_ALL.
-NOTE: The data set OUSASLIB.CRM3_PV_ALL has 9026889 observations and 401 variables.
-NOTE: PROCEDURE SORT used (Total process time):
-      real time           42:21.80
-      user cpu time       1:17.90
-      system cpu time     2:02.34
-      memory              1057087.71k
-      OS Memory           1066952.00k
-      Timestamp           09/08/2016 12:52:42 PM
-      Step Count                        3  Switch Count  0
-      Page Faults                       4
-      Page Reclaims                     284475
-      Page Swaps                        0
-      Voluntary Context Switches        947844
-      Involuntary Context Switches      522
-      Block Input Operations            115359952
-      Block Output Operations           115545104
-      
-
-28         data ousaslib.crm3_pv_all;
-29         	set ousaslib.crm3_pv_all;
-30         	by ts_registratie;
-31         	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005AreCRM3KeysUnique.sas
-31       ! */
-32         run;
-
-NOTE: There were 9026889 observations read from the data set OUSASLIB.CRM3_PV_ALL.
-NOTE: The data set OUSASLIB.CRM3_PV_ALL has 9026338 observations and 401 variables.
-NOTE: DATA statement used (Total process time):
-      real time           11:52.41
-      user cpu time       8.79 seconds
-      system cpu time     50.30 seconds
-      memory              1748.65k
-      OS Memory           11688.00k
-      Timestamp           09/08/2016 01:04:34 PM
-      Step Count                        4  Switch Count  0
-      Page Faults                       2
-      Page Reclaims                     328
-      Page Swaps                        0
-      Voluntary Context Switches        15671
-      Involuntary Context Switches      135
-      Block Input Operations            25136752
-      Block Output Operations           57768976
-      
-
+25         *proc sort data=ousaslib.crm3_pv_all;
+26         *	by ts_registratie;	
+27         *run;
+28         *data ousaslib.crm3_pv_all;
+29         *	set ousaslib.crm3_pv_all;
+30         *	by ts_registratie;
+31         *	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005AreCRM3KeysUnique.sas
+31       !  */
+32         *run;
 33         
 34         /* At this point, both matm2 and crm3_pv_all should be sorted by timestamp.
 35            Obs in matm2 start in 2011, those in crm3_pv_all start in 2015. */
 36         data ousaslib.crm3allplusKeys;
 37         	if _n_ = 1 then do;
 38         		set ousaslib.crm3_pv_all;
-4                                                          The SAS System                              11:42 Tuesday, August 9, 2016
-
 39         		ts_ei = .; /* not really needed */
 40         	end;
 41         	do while (ts_ei < ts_registratie);
@@ -187,6 +118,8 @@ NOTE: DATA statement used (Total process time):
 43         	end;
 44         	do while (ts_registratie <= ts_ei);
 45         		if (ts_registratie >= ts_be) then output;
+3                                                          The SAS System                            14:41 Saturday, August 13, 2016
+
 46         		set ousaslib.crm3_pv_all;  /* ts_registratie UP */
 47         	end;
 48         	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
@@ -197,42 +130,42 @@ NOTE: There were 35669 observations read from the data set OUSASLIB.MATM2.
 NOTE: There were 9010973 observations read from the data set OUSASLIB.CRM3_PV_ALL.
 NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629412 observations and 406 variables.
 NOTE: DATA statement used (Total process time):
-      real time           9:50.08
-      user cpu time       7.53 seconds
-      system cpu time     40.94 seconds
-      memory              2105.43k
-      OS Memory           11944.00k
-      Timestamp           09/08/2016 01:14:24 PM
-      Step Count                        5  Switch Count  0
-      Page Faults                       1
-      Page Reclaims                     374
+      real time           10:14.22
+      user cpu time       7.38 seconds
+      system cpu time     43.44 seconds
+      memory              2248.87k
+      OS Memory           10152.00k
+      Timestamp           13/08/2016 02:51:26 PM
+      Step Count                        2  Switch Count  0
+      Page Faults                       0
+      Page Reclaims                     927
       Page Swaps                        0
-      Voluntary Context Switches        12970
-      Involuntary Context Switches      114
-      Block Input Operations            18618128
+      Voluntary Context Switches        18283
+      Involuntary Context Switches      119
+      Block Input Operations            57679496
       Block Output Operations           48828688
       
 
 50         
 51         %put ### %sysevalf( %sysfunc(datetime()) - &t. );
-### 5497.94035005569
+### 614.90673995018
 52         
 53         /* end of program */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           1:31:47.34
-      user cpu time       1:42.93
-      system cpu time     4:22.64
-      memory              1063250.09k
-      OS Memory           1066952.00k
-      Timestamp           09/08/2016 01:14:25 PM
-      Step Count                        5  Switch Count  16
-      Page Faults                       63
-      Page Reclaims                     293474
+      real time           10:14.93
+      user cpu time       7.43 seconds
+      system cpu time     43.53 seconds
+      memory              11384.06k
+      OS Memory           12988.00k
+      Timestamp           13/08/2016 02:51:26 PM
+      Step Count                        2  Switch Count  10
+      Page Faults                       0
+      Page Reclaims                     8201
       Page Swaps                        0
-      Voluntary Context Switches        997370
-      Involuntary Context Switches      938
-      Block Input Operations            217067632
-      Block Output Operations           279918864
+      Voluntary Context Switches        18409
+      Involuntary Context Switches      122
+      Block Input Operations            57845400
+      Block Output Operations           48832192
       

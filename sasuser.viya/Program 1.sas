@@ -14,7 +14,9 @@ data ousaslib.skp1walsplusKeys2;
 	set ousaslib.skp1walsplusKeys;
 run;
 
-proc print data=insaslib.skp1_sigdef; run;
+data ousaslib.skp1small_PREP_INTERVAL;
+	
+
 
 proc print data=ousaslib.skp1allplusKeysplusCilinders1(obs=2); run;
 
@@ -27,7 +29,7 @@ proc print data=ousaslib.skp1walsplusKeys(obs=10); * keep=	cl_n bew_vn dch_n ts_
 																	
 proc print data=ousaslib.skp1small(keep=cl_n dch_n bew_vn _deel); run;
 
-proc contents data=ousaslib.skp1small_INTERVAL; run;
+proc print data=ousaslib.crm3allplusKeys(obs=20); run;
 
 data ousaslib.skp1smaller_INTERVAL;
 	set ousaslib.skp1small_INTERVAL;

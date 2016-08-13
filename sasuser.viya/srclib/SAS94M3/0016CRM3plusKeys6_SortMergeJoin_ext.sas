@@ -16,20 +16,20 @@ proc sort data=insaslib.matm2(keep=ts_be ts_ei cl_n dch_n bew_vn a_dch dl_n_lei 
 run;
 
 /* Concatenate all crm3_pv* data sets */
-data ousaslib.crm3_pv_all;
-	set insaslib.crm3_pv_2015q1 insaslib.crm3_pv_2015q2 insaslib.crm3_pv_2015q3 insaslib.crm3_pv_2015q4 insaslib.crm3_pv;
-	drop ts_registratie_gmt datum_reg guid;
-run;
+*data ousaslib.crm3_pv_all;
+*	set insaslib.crm3_pv_2015q1 insaslib.crm3_pv_2015q2 insaslib.crm3_pv_2015q3 insaslib.crm3_pv_2015q4 insaslib.crm3_pv;
+*	drop ts_registratie_gmt datum_reg guid;
+*run;
 
 /* Sort crm3_pv by ts_registratie */
-proc sort data=ousaslib.crm3_pv_all;
-	by ts_registratie;	
-run;
-data ousaslib.crm3_pv_all;
-	set ousaslib.crm3_pv_all;
-	by ts_registratie;
-	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005AreCRM3KeysUnique.sas */  
-run;
+*proc sort data=ousaslib.crm3_pv_all;
+*	by ts_registratie;	
+*run;
+*data ousaslib.crm3_pv_all;
+*	set ousaslib.crm3_pv_all;
+*	by ts_registratie;
+*	if first.ts_registratie then output; /* Only output first observation of non-unique ones, cf. 0005AreCRM3KeysUnique.sas */  
+*run;
 
 /* At this point, both matm2 and crm3_pv_all should be sorted by timestamp.
    Obs in matm2 start in 2011, those in crm3_pv_all start in 2015. */
@@ -46,6 +46,10 @@ data ousaslib.crm3allplusKeys;
 		set ousaslib.crm3_pv_all;  /* ts_registratie UP */
 	end;
 	*keep ts_be ts_ei cl_n dch_n bew_vn ts_registratie d100; /* only KeyCols */
+run;
+
+data ousaslib.crm3allplusKeys;
+	set ousaslib.crm3allplusKeys(firstobs=2);
 run;
 
 %put ### %sysevalf( %sysfunc(datetime()) - &t. );

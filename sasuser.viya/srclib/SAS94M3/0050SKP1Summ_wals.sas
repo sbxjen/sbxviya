@@ -18,7 +18,7 @@ libname ousaslib "/tmp/v94/";
 
 /* Divide into INTERVAL and BINARY/NOMINAL variables.
    All bookkeeping, missing, unary variables (except for Key columns) should have been removed by now. */
-data &inputdsn._NOINTERVAL(drop=&KeyCols. ts_registratie &INTERVAL. ts_be ts_ei _vars) &inputdsn._INTERVAL(keep=KeyCol ts_registratie &INTERVAL. _vars);
+data &inputdsn._NOINTERVAL(drop=&KeyCols. ts_registratie &INTERVAL. ts_be ts_ei _vars) &inputdsn._INTERVAL(keep=KeyCol ts_registratie &INTERVAL.);
 	length _vars $6000;
 	_vars = "&target. _x _pol";
 	set &inputdsn.;
