@@ -34,7 +34,7 @@ proc nnet data=mycas.mnist_train standardize=std;
 	architecture MLP;
 	hidden 75;
 	train outmodel=mycas.nnetModel seed=23451 validation=mycas.mnist_validation;
-	optimization algorithm=lbfgs maxiters=400 RegL1=0.001 RegL2=0.001;
+	optimization algorithm=lbfgs maxiters=250 RegL1=0.001 RegL2=0.001;
 	code file="&USERDIR./nnetModel.sas";
 run;
 ods _all_ close;
@@ -47,8 +47,16 @@ proc nnet data=mycas.mnist_test inmodel=mycas.nnetModel;
    score out=mycas.nnetOut copyvars=d784;
 run;
 
-proc print data=mycas.nnetOut1(obs=1); run;
-proc print data=mycas.nnetModel2(obs=10); run;
+proc contents data=mysas.OptIterHistory; run;
+
+ods graphics on / scale=on;
+title "Iteration History";
+
+proc sgplot data=mysas.OptIterHistory;
+	xaxis grid type=log; yaxis grid values=(0 to 7 by 1)  display=(nolabel);
+	series x=Progress y=Loss / lineattrs=(color=gray pattern=2);
+	series x=Progress y=Objective / lineattrs=(color=blue pattern=1);
+run;
 
 /*proc nnet data=mycas.mnist_train standardize=std;
 	target d784 / level=nom comb=linear act=softmax error=entropy;
