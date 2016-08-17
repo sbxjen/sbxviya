@@ -3,6 +3,7 @@ libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
 
+<<<<<<< HEAD
 proc print data=ousaslib.crm3allplusKeys_PREP_INTERVAL(obs=1000); run;
 
 
@@ -37,6 +38,10 @@ proc contents data=ousaslib.skp1small_prep_base; run;
 
 data ousaslib.skp1small_PREP_INTERVAL;
 	set ousaslib.skp1walsplusKeys_PREP_INTERVAL(obs=20000);
+=======
+data ousaslib.skp1small;
+	set ousaslib.skp1walsplusKeys_PREP(obs=2000);
+>>>>>>> 662b72f64fa548b59a7b1a4037bf7d3a2326b982
 	*keep cl_n bew_vn dch_n ts_registratie d324 d382 d522 d523 d524 _deel _x _pol KeyCol;
 	*KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
 	*drop &intlist.;
