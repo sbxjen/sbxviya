@@ -19,6 +19,7 @@
 			by KeyCol;
 		run;
 <<<<<<< HEAD:sasuser.viya/srclib/SAS94M3/0050Summ_macrodef.sas
+<<<<<<< HEAD:sasuser.viya/srclib/SAS94M3/0050Summ_macrodef.sas
 
 /*
 1          OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
@@ -43,6 +44,8 @@
 */
 
 =======
+=======
+>>>>>>> 662b72f64fa548b59a7b1a4037bf7d3a2326b982:sasuser.viya/srclib/SAS94M3/0050SKP1Summ_wals.sas
 		
 >>>>>>> 662b72f64fa548b59a7b1a4037bf7d3a2326b982:sasuser.viya/srclib/SAS94M3/0050SKP1Summ_wals.sas
 		data Means(drop=&int. Mean stddev x: i j);
