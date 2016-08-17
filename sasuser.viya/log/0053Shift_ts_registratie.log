@@ -1,4 +1,4 @@
-1                                                          The SAS System                            16:22 Saturday, August 13, 2016
+1                                                          The SAS System                           17:10 Wednesday, August 17, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -38,7 +38,7 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           0.02 seconds
+      real time           0.08 seconds
       cpu time            0.03 seconds
       
 1          libname insaslib "/tmp/viya/" access=readonly;
@@ -50,47 +50,48 @@ NOTE: Libref OUSASLIB was successfully assigned as follows:
       Engine:        V9 
       Physical Name: /tmp/v94
 3          
-4          %let inputdsn=ousaslib.skp1walsplusKeys_PREP_INTERVAL;
-5          *%let inputdsn=ousaslib.skp1small_PREP_INTERVAL;
-6          
-7          proc sort data=&inputdsn.;
-8          	by KeyCol ts_registratie;
-9          run;
+4          %let inputdsn=ousaslib.crm3allplusKeys_PREP_INTERVAL;
+5          *%let inputdsn=ousaslib.skp1walsplusKeys_PREP_INTERVAL;
+6          *%let inputdsn=ousaslib.skp1small_PREP_INTERVAL;
+7          
+8          proc sort data=&inputdsn.;
+9          	by KeyCol ts_registratie;
+10         run;
 
-NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_INTERVAL.
-2                                                          The SAS System                            16:22 Saturday, August 13, 2016
+2                                                          The SAS System                           17:10 Wednesday, August 17, 2016
 
-NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_INTERVAL has 1074903 observations and 205 variables.
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL has 7629411 observations and 12 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           17.84 seconds
-      cpu time            15.38 seconds
+      real time           10.19 seconds
+      cpu time            25.45 seconds
       
 
-10         
-11         data &inputdsn(drop=_t0 i);
-12         	retain _t0 i;
-13         	set &inputdsn.;
-14         	by KeyCol;
-15         	if first.KeyCol then do;
-16         		_t0=ts_registratie;
-17         		i=0;
-18         	end;
-19         	else i+1;
-20         	ts_registratie = _t0+i;
-21         run;
+11         
+12         data &inputdsn(drop=_t0 i);
+13         	retain _t0 i;
+14         	set &inputdsn.;
+15         	by KeyCol;
+16         	if first.KeyCol then do;
+17         		_t0=ts_registratie;
+18         		i=0;
+19         	end;
+20         	else i+1;
+21         	ts_registratie = _t0+i;
+22         run;
 
-NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_INTERVAL.
-NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_INTERVAL has 1074903 observations and 205 variables.
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL has 7629411 observations and 12 variables.
 NOTE: DATA statement used (Total process time):
-      real time           3.91 seconds
-      cpu time            3.83 seconds
+      real time           5.32 seconds
+      cpu time            5.32 seconds
       
 
-22         
-23         /* end of program */
+23         
+24         /* end of program */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           21.80 seconds
-      cpu time            19.26 seconds
+      real time           15.61 seconds
+      cpu time            30.82 seconds
       

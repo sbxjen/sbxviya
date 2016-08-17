@@ -1,0 +1,174 @@
+1                                                          The SAS System                           17:10 Wednesday, August 17, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+1          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+2          %let inputdsn=ousaslib.skp1walsplusKeys_PREP;
+3          
+4          /* 	inputdsn contains 2 target variables: d524 (raw) and P_d524 (smoothed).
+5          	We take sqrt(||d(P_d524)/d(_x)||_2^2 / N) as our target in the cross-sectional data set.
+6          */
+7          data &inputdsn._TARGET;
+8          	set &inputdsn._INTERVAL(keep=KeyCol ts_registratie _x P_d524);
+9          run;
+
+NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET has 1074903 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           12.58 seconds
+2                                                          The SAS System                           17:10 Wednesday, August 17, 2016
+
+      cpu time            1.98 seconds
+      
+
+10         
+11         proc sort data=&inputdsn._TARGET;
+12         	by KeyCol;
+13         run;
+
+NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET has 1074903 observations and 4 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.89 seconds
+      cpu time            2.03 seconds
+      
+
+14         
+15         proc expand data=&inputdsn._TARGET out=&inputdsn._TARGET method=none;
+16         	by KeyCol;
+17         	id ts_registratie;
+18         	convert P_d524=dif_P_d524 / transformout=(dif 1);
+19         	convert _x=dif_x / transformout=(dif 1);
+20         run;
+
+WARNING: The variable P_d524 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      KeyCol=51801325_9_1_1
+WARNING: The variable P_d524 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      KeyCol=51801325_9_1_2
+WARNING: The variable P_d524 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      KeyCol=51801325_9_1_3
+WARNING: The variable P_d524 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      KeyCol=62054468_11_0_5
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET has 1074903 observations and 6 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           2.34 seconds
+      cpu time            2.34 seconds
+      
+
+21         
+22         data &inputdsn._TARGET(keep=KeyCol dd_x);
+23         	set &inputdsn._TARGET; /* . = $-\infty$ */
+24         	dd_x=max(0, dif_P_d524/dif_x);
+25         run;
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      23877 at 24:24   
+NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET has 1074903 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.57 seconds
+3                                                          The SAS System                           17:10 Wednesday, August 17, 2016
+
+      cpu time            0.58 seconds
+      
+
+26         
+27         data &inputdsn._TARGET(keep=KeyCol norm_dd_x);
+28         	retain norm_dd_x N 0;
+29         	set &inputdsn._TARGET;
+30         	by KeyCol;
+31         
+32         	if first.Keycol then
+33         		do;
+34         			N=0;
+35         			norm_dd_x=0;
+36         		end;
+37         	N + 1;
+38         	norm_dd_x + dd_x**2;
+39         
+40         	if last.KeyCol then
+41         		do;
+42         			norm_dd_x = sqrt(norm_dd_x/N);
+43         			output;
+44         		end;
+45         run;
+
+NOTE: There were 1074903 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET has 23693 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.33 seconds
+      cpu time            0.33 seconds
+      
+
+46         
+47         /* Retain positive and zero values, but rescale the target so that it becomes of an interpretable order of magnitude. */
+48         proc stdize data=&inputdsn._TARGET out=&inputdsn._TARGET method=euclen;
+49         	var norm_dd_x;
+50         run;
+
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET has 23693 observations and 2 variables.
+NOTE: PROCEDURE STDIZE used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+
+51         
+52         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           16.78 seconds
+      cpu time            7.30 seconds
+      

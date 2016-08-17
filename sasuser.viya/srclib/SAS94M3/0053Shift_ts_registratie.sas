@@ -1,7 +1,8 @@
 libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 
-%let inputdsn=ousaslib.skp1walsplusKeys_PREP_INTERVAL;
+%let inputdsn=ousaslib.crm3allplusKeys_PREP_INTERVAL;
+*%let inputdsn=ousaslib.skp1walsplusKeys_PREP_INTERVAL;
 *%let inputdsn=ousaslib.skp1small_PREP_INTERVAL;
 
 proc sort data=&inputdsn.;
