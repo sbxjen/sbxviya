@@ -3,6 +3,9 @@ libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
 
+proc print data=ousaslib.crm3allplusKeys_PREP_INTERVAL(obs=1000); run;
+
+
 data work.tmp;
 	input KeyCol x;
 datalines;

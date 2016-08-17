@@ -1,4 +1,4 @@
-1                                                          The SAS System                           17:10 Wednesday, August 17, 2016
+1                                                          The SAS System                           21:02 Wednesday, August 17, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -38,7 +38,7 @@ The command line option "-nonews" will prevent this display.
 
 
 NOTE: SAS initialization used:
-      real time           0.08 seconds
+      real time           0.02 seconds
       cpu time            0.03 seconds
       
 1          libname insaslib "/tmp/viya/" access=readonly;
@@ -58,13 +58,13 @@ NOTE: Libref OUSASLIB was successfully assigned as follows:
 9          	by KeyCol ts_registratie;
 10         run;
 
-2                                                          The SAS System                           17:10 Wednesday, August 17, 2016
+2                                                          The SAS System                           21:02 Wednesday, August 17, 2016
 
 NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
 NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL has 7629411 observations and 12 variables.
 NOTE: PROCEDURE SORT used (Total process time):
-      real time           10.19 seconds
-      cpu time            25.45 seconds
+      real time           10.06 seconds
+      cpu time            24.91 seconds
       
 
 11         
@@ -74,24 +74,27 @@ NOTE: PROCEDURE SORT used (Total process time):
 15         	by KeyCol;
 16         	if first.KeyCol then do;
 17         		_t0=ts_registratie;
-18         		i=0;
+18         		*i=0;
 19         	end;
-20         	else i+1;
-21         	ts_registratie = _t0+i;
-22         run;
+20         	*else i+1;
+21         	*ts_registratie = _t0+i;
+22         	ts_registratie = ts_registratie - _t0;
+23         run;
 
+NOTE: Variable i is uninitialized.
+WARNING: The variable i in the DROP, KEEP, or RENAME list has never been referenced.
 NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
 NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL has 7629411 observations and 12 variables.
 NOTE: DATA statement used (Total process time):
-      real time           5.32 seconds
-      cpu time            5.32 seconds
+      real time           5.31 seconds
+      cpu time            5.17 seconds
       
 
-23         
-24         /* end of program */
+24         
+25         /* end of program */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
-      real time           15.61 seconds
-      cpu time            30.82 seconds
+      real time           15.41 seconds
+      cpu time            30.11 seconds
       

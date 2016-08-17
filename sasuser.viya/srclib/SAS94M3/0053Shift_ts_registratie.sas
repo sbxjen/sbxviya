@@ -14,11 +14,10 @@ data &inputdsn(drop=_t0 i);
 	set &inputdsn.;
 	by KeyCol;
 	if first.KeyCol then do; 
-		_t0=ts_registratie;
 		i=0;
 	end;
 	else i+1;
-	ts_registratie = _t0+i;
+	ts_registratie = i;
 run;
 
 /* end of program */

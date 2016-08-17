@@ -31,7 +31,7 @@ run;
 
 proc sort data=&inputdsn._NOINTERVAL;
 	by KeyCol;
-run;
+run;	
 data &inputdsn._BASE;
 	set &inputdsn._NOINTERVAL(keep=KeyCol); /* INTERVAL would have worked as well */
 	by KeyCol;
