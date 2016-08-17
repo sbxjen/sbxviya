@@ -1,0 +1,183 @@
+1                                                          The SAS System                            16:54 Saturday, August 13, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.08 seconds
+      cpu time            0.02 seconds
+      
+1          *;
+2          libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          *%let inputdswconstcols=ousaslib.skp1allplusKeysplusCilinders;
+7          %let inputdswconstcols=ousaslib.crm3allPlusKeys;
+8          
+9          /* numeric */
+10         ods output summary=work.summ;
+11         proc means data=&inputdswconstcols. std;
+2                                                          The SAS System                            16:54 Saturday, August 13, 2016
+
+12         	var _numeric_;
+13         run;
+
+NOTE: The data set WORK.SUMM has 1 observations and 1185 variables.
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The PROCEDURE MEANS printed pages 1-8.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           33.80 seconds
+      cpu time            1:50.99
+      
+
+14         data _null_;
+15         	set work.summ;
+16         	length _vars $6000;
+17         	array _n _numeric_ _dumn;
+18         	do i = 1 to dim(_n)-1;
+19         		if (substr(vname(_n{i}), length(vname(_n{i}))-6, 7) = "_StdDev" and _n{i}=0)
+20         		then do;
+21         			_vars = catx(" ", _vars, substr(vname(_n{i}), 1, length(vname(_n{i}))-7));
+22         		end;
+23         	end;
+24         	call symputx("droplist_n", _vars);
+25         run;
+
+NOTE: There were 1 observations read from the data set WORK.SUMM.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+      
+
+26         
+27         %put &=droplist_n.;
+DROPLIST_N=d032 d047 d131 d132 d291 d312
+28         
+29         /* character */
+30         data &inputdswconstcols.;
+31         	set &inputdswconstcols.;
+32         	_dumc = '_dumc';
+33         run;
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 397 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:05.61
+      cpu time            44.61 seconds
+      
+
+34         
+35         ods output nlevels=work.nlevels;
+36         proc freq data=&inputdswconstcols. nlevels;
+37         	tables _character_ _dumc / noprint;
+38         run;
+
+NOTE: The data set WORK.NLEVELS has 2 observations and 3 variables.
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The PROCEDURE FREQ printed page 9.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           16.22 seconds
+3                                                          The SAS System                            16:54 Saturday, August 13, 2016
+
+      cpu time            16.23 seconds
+      
+
+39         
+40         data _null_;
+41         	set work.nlevels end=last;
+42         	length _vars $6000;
+43         	retain _vars;
+44         	if not (NLevels > 1) then _vars = catx(" ", _vars, TableVar);
+45         	if last then call symputx("droplist_c", _vars);
+46         run;
+
+NOTE: There were 2 observations read from the data set WORK.NLEVELS.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+47         
+48         %put &=droplist_c.;
+DROPLIST_C=_dumc
+49         
+50         proc datasets library=work nolist;
+51         	delete summ 	/ memtype=data; run;
+
+NOTE: Deleting WORK.SUMM (memtype=DATA).
+52         	
+52       !  delete nlevels	/ memtype=data; run;
+
+NOTE: Deleting WORK.NLEVELS (memtype=DATA).
+53         quit;
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+54         
+55         data &inputdswconstcols.;
+56         	_dummy = 0; /* In case the drop list is empty */
+57         	set &inputdswconstcols.;
+58         	drop &droplist_n &droplist_c _dummy;
+59         run;
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 390 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5:54.09
+      cpu time            46.08 seconds
+      
+
+60         
+61         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           9:49.91
+      cpu time            3:37.98
+4                                                          The SAS System                            16:54 Saturday, August 13, 2016
+
+      

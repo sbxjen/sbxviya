@@ -1,0 +1,3064 @@
+1                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.11 seconds
+      cpu time            0.02 seconds
+      
+1          *;
+2          libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+3          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+4          *;
+5          
+6          /* Define some 'global' macro variables. */
+7          
+8          /* Input data set (e.g. ousaslib.skp1walsplusKeys) */
+9          *%let inputdsn=ousaslib.skp1small;
+10         *%let inputdsn=ousaslib.skp1walsplusKeys;
+11         %let inputdsn=ousaslib.crm3allplusKeys;
+2                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+12         
+13         /* Key columns in inputdsn: BY variables for PROC EXPAND, PROC TRANSREG ... */
+14         %let KeyCols=cl_n bew_vn dch_n; *_deel;
+15         *%let KeyCols=cl_n bew_vn dch_n;
+16         /* time ID in inputdsn for PROC EXPAND, PROC TRANSREG ... */
+17         %let t=ts_registratie;
+18         /* TARGET column */
+19         %let target=d524;
+20         /* ID columns AND TARGET variable in inputdsn: these are not treated as ordinary interval variables here. */
+21         %let IDCols=("ts_registratie", "cl_n", "bew_vn", "dch_n", "ts_be", "ts_ei", "&target.");
+22         
+23         /*proc format;
+24         	value missfmt . ='Missing' other='Not Missing';
+25         run;*/
+26         
+27         *data ousaslib.skp1small;
+28         	*set ousaslib.skp1walsplusKeys(obs=2000);
+29         	*keep cl_n bew_vn dch_n ts_registratie d324 d382 d522 d523 d524 _deel _x _pol KeyCol;
+30         	*KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
+31         *run;
+32         
+33         /* Preprocess the signal y in a pass- or coil-based data set dsn (e.g. ousaslib.skp1walsplusKeys).
+34            A smoothed version P_y of the signal y is added to this data set dsn on return. */
+35         %macro preprocess(dsn=, y=, KeyCol=);
+36         	/* 1. Remove outliers. */
+37         	proc univariate data=&dsn. noprint;
+38         		by &KeyCol.;
+39         		var &y.;
+40         		output out=work.tmp q1=q1 q3=q3 qrange=iqr;
+41         	run;
+42         	data work.out;
+43         		merge &dsn. work.tmp;
+44         		by &KeyCol.;
+45         		if ((&y.<q1-1.5*iqr) or (&y.>q3+1.5*iqr)) then &y.=.;	
+46         	run;
+47         	
+48         	/* 2. Apply moving average filter. */
+49         	proc expand data=work.out out=work.avg method=none;
+50         		by &KeyCol.;
+51         		id &t.;
+52         		convert &y. = &y.f / transformout=(movave 3);
+53         	run;
+54         	proc datasets library=work nolist;
+55          		delete tmp out / memtype=data;
+56          	run;
+57         
+58         	/* 3. Remove outliers again, but now based on stddev. */
+59         	data work.avg;
+60         		set work.avg; /* contains &y.f now */
+61         		_delta_&y. = &y. - &y.f; /* NOTE: Missing values were generated as a result of performing an operation on missing
+61       ! values (in &y.). */
+62         	run;
+63         	proc univariate data=work.avg noprint;
+64         		by &KeyCol.;
+65         		var _delta_&y.;
+66         		output out=work.tmp std=stddev;
+67         	run;
+68         	data work.out;
+3                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+69         		merge work.avg work.tmp;
+70         		by &KeyCol.;
+71         		if (abs(&y. - &y.f) > 2*stddev) then &y.=.;
+72         		drop _delta_&y. &y.f;
+73         	run;
+74         	proc datasets library=work nolist;
+75          		delete tmp avg / memtype=data;
+76          	run;
+77         	
+78         	/* 4. Fit a cubic spline. */
+79         	/* First, handle missing values */
+80         	proc expand data=work.out out=work.full method=spline;
+81         		by &KeyCol.;
+82         		id &t.;
+83         		convert &y. = &y.f; /* WARNING: The variable d025 has only 0 nonmissing observations, which is too few to apply the
+83       ! conversion method. The result series
+84                   is set to missing. */
+85         	run;
+86         	/*proc freq data=work.full;
+87         		by &KeyCol.;
+88         		format _numeric_ missfmt.;
+89         		tables &y. &y.f / missing missprint nocum nopercent;
+90         	run;*/
+91         
+92         /*  For INPUT variables */
+93         	data &dsn.;
+94         		merge &dsn. work.full(keep=&KeyCol. &t. &y.f rename=(&y.f=P_&y.));
+95         		by &KeyCol. &t.;
+96         	run;
+97         
+98         /*  For TARGET variable */
+99         /*	options nonotes;
+100        	proc transreg data=work.full noprint plots=none;
+101        		by &KeyCol.;
+102        		model identity(&y.f) = spline(&t. / degree=3);
+103        		output out=work.spline predicted;
+104        	run;
+105        	options notes;
+106        	data &dsn.;
+107        		merge &dsn. work.spline(drop=_TYPE_ _NAME_ &y.f T&y.f Intercept TIntercept	T&t. rename=(P&y.f=P_&y.));
+108        		by &KeyCol. &t.;
+109        		if (P_&y.=0) then P_&y.=&y.;
+110        	run; */
+111        	proc datasets library=work nolist;
+112         		delete out full /*spline*/ / memtype=data;
+113         	run;
+114        	quit;
+115        %mend;
+116        /* end of macro */
+117        
+118        /* Preprocess all interval variables in a pass- or coil-based data set. */
+119        %macro preprocess_all();
+120        
+121        	proc sort data=&inputdsn.;
+122        		by &KeyCols. &t.;
+123        	run;
+124        
+125        	/* Determine interval variables. */
+4                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+126        	%include '/home/sastest/sbxviya/sasuser.viya/srclib/SAS94M3/0041DetermineINTColumns.sas';
+127        	%put &=intlist.; /* interval variables */
+128        
+129        	%let nvar=%sysfunc(countw(&intlist.,%str( )));
+130        	
+131        	%do ivar=1 %to &nvar.;
+132        		%let yvar=%scan(&intlist.,&ivar.);
+133        		%preprocess(dsn=&inputdsn., y=&yvar., KeyCol=&KeyCols.);
+134        	%end;
+135        
+136        %mend;
+137        /* end of macro */
+138        
+139        *options source2;
+140        
+141        /* For INPUT variables */
+142        %preprocess_all();
+
+NOTE: Input data set is already sorted, no sorting done.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: The data set WORK.NLEVELS has 389 observations and 5 variables.
+NOTE: There were 2000 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: The PROCEDURE FREQ printed pages 1-125.
+NOTE: PROCEDURE FREQ used (Total process time):
+      real time           0.65 seconds
+      cpu time            0.21 seconds
+      
+
+
+NOTE: There were 389 observations read from the data set WORK.NLEVELS.
+NOTE: DATA statement used (Total process time):
+      real time           0.11 seconds
+      cpu time            0.01 seconds
+      
+
+INTLIST=d251 d252 d254 d256 d262 d282 d283 d351 d359 d379
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:53.63
+      cpu time            19.80 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 393 variables.
+NOTE: DATA statement used (Total process time):
+      real time           6:42.14
+      cpu time            43.62 seconds
+      
+
+
+5                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: The data set WORK.AVG has 7629411 observations and 394 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           27:11.89
+      cpu time            59.36 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.93 seconds
+      cpu time            2.85 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      184945 at 224:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 395 variables.
+NOTE: DATA statement used (Total process time):
+      real time           12:59.15
+      cpu time            48.64 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           19.85 seconds
+      cpu time            16.56 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      184945 at 234:192   184945 at 234:200   23 at 234:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 394 variables.
+NOTE: DATA statement used (Total process time):
+      real time           10:34.01
+      cpu time            45.45 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           8.03 seconds
+      cpu time            4.54 seconds
+      
+
+
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+6                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+7                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d251 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 395 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           13:50.00
+      cpu time            1:00.71
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 391 variables.
+NOTE: DATA statement used (Total process time):
+      real time           32:49.28
+      cpu time            1:14.50
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           5.38 seconds
+      cpu time            5.22 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           5:54.57
+      cpu time            20.51 seconds
+      
+
+8                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 394 variables.
+NOTE: DATA statement used (Total process time):
+      real time           6:28.95
+      cpu time            43.74 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 395 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           22:11.44
+      cpu time            58.50 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.87 seconds
+      cpu time            2.89 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      111094 at 285:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 396 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4:13.62
+      cpu time            46.54 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           18.19 seconds
+      cpu time            16.23 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      111094 at 294:192   111094 at 294:200   23 at 294:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 395 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4:38.38
+      cpu time            43.95 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+9                                                          The SAS System                              13:03 Monday, August 15, 2016
+
+      real time           4.09 seconds
+      cpu time            4.29 seconds
+      
+
+
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+10                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d252 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 396 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           5:11.31
+      cpu time            53.14 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 392 variables.
+NOTE: DATA statement used (Total process time):
+      real time           15:12.40
+      cpu time            1:14.47
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.84 seconds
+11                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      cpu time            4.93 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:15.67
+      cpu time            19.82 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 395 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2:58.03
+      cpu time            42.32 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 396 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           11:18.75
+      cpu time            56.78 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.91 seconds
+      cpu time            2.91 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      151217 at 345:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 397 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5:25.42
+      cpu time            46.14 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           16.94 seconds
+      cpu time            16.40 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      151217 at 354:192   151217 at 354:200   23 at 354:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 396 variables.
+12                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: DATA statement used (Total process time):
+      real time           4:58.28
+      cpu time            43.04 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.22 seconds
+      cpu time            4.37 seconds
+      
+
+
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+13                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d254 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 397 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           5:38.44
+      cpu time            52.60 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+14                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 393 variables.
+NOTE: DATA statement used (Total process time):
+      real time           13:39.45
+      cpu time            1:12.34
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.89 seconds
+      cpu time            4.86 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:03.81
+      cpu time            19.47 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 396 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:12.14
+      cpu time            42.48 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 397 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           13:16.76
+      cpu time            57.13 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.94 seconds
+      cpu time            2.91 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      84014 at 405:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 398 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5:09.54
+      cpu time            46.61 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           17.84 seconds
+15                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      cpu time            15.76 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      84014 at 414:192   84014 at 414:200   23 at 414:211      
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 397 variables.
+NOTE: DATA statement used (Total process time):
+      real time           5:30.82
+      cpu time            42.92 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.18 seconds
+      cpu time            4.30 seconds
+      
+
+
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+16                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d256 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+17                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 398 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           6:35.34
+      cpu time            53.43 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 394 variables.
+NOTE: DATA statement used (Total process time):
+      real time           13:58.00
+      cpu time            1:13.25
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.76 seconds
+      cpu time            4.83 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:23.16
+      cpu time            20.54 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 397 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:04.30
+      cpu time            42.10 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 398 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           12:01.38
+      cpu time            58.07 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.94 seconds
+      cpu time            2.99 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      82092 at 465:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+18                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: The data set WORK.AVG has 7629411 observations and 399 variables.
+NOTE: DATA statement used (Total process time):
+      real time           7:48.34
+      cpu time            46.92 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           30.14 seconds
+      cpu time            16.30 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      82092 at 474:192   82092 at 474:200   23 at 474:211      
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 398 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:32.73
+      cpu time            42.78 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           8.47 seconds
+      cpu time            4.31 seconds
+      
+
+
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+19                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+20                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d262 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 399 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           6:22.34
+      cpu time            53.88 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 395 variables.
+NOTE: DATA statement used (Total process time):
+      real time           14:58.07
+      cpu time            1:13.29
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.73 seconds
+      cpu time            4.78 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:00.30
+      cpu time            19.31 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 398 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:10.94
+      cpu time            42.26 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 399 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           11:43.30
+      cpu time            56.65 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+21                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.93 seconds
+      cpu time            2.91 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      140882 at 525:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 400 variables.
+NOTE: DATA statement used (Total process time):
+      real time           10:31.51
+      cpu time            50.15 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           19.53 seconds
+      cpu time            16.05 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      140882 at 534:192   140882 at 534:200   23 at 534:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 399 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:30.21
+      cpu time            43.15 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.27 seconds
+      cpu time            4.39 seconds
+      
+
+
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+22                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+23                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d282 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 400 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           6:54.28
+      cpu time            54.29 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 396 variables.
+NOTE: DATA statement used (Total process time):
+      real time           14:50.91
+      cpu time            1:12.91
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.33 seconds
+      cpu time            2.39 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:06.91
+      cpu time            19.46 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 399 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:03.50
+      cpu time            42.25 seconds
+      
+24                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 400 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           11:32.49
+      cpu time            56.95 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.74 seconds
+      cpu time            2.75 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      70226 at 585:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 401 variables.
+NOTE: DATA statement used (Total process time):
+      real time           7:56.02
+      cpu time            48.31 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           30.36 seconds
+      cpu time            16.03 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      70226 at 594:192   70226 at 594:200   23 at 594:211      
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 400 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:57.53
+      cpu time            43.49 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           5.83 seconds
+      cpu time            4.25 seconds
+      
+
+
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+25                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+26                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d283 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 401 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           8:15.70
+      cpu time            55.65 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 397 variables.
+NOTE: DATA statement used (Total process time):
+      real time           14:30.02
+      cpu time            1:14.70
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.73 seconds
+      cpu time            4.80 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:15.65
+      cpu time            19.83 seconds
+27                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 400 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:48.13
+      cpu time            43.32 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 401 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           13:23.51
+      cpu time            57.33 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.88 seconds
+      cpu time            2.85 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      295676 at 645:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 402 variables.
+NOTE: DATA statement used (Total process time):
+      real time           8:14.58
+      cpu time            48.05 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           17.07 seconds
+      cpu time            16.88 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      295676 at 654:192   295676 at 654:200   23 at 654:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 401 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:52.32
+      cpu time            43.49 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+28                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           6.49 seconds
+      cpu time            4.38 seconds
+      
+
+
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44658692 BEW_VN=9 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44908732 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44956236 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=45058932 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50102120 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50103251 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50211111 BEW_VN=9 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50213315 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50213448 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50250185 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50251662 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+29                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=50253577 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50253585 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50255432 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50301334 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50301417 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50301847 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50301938 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50303322 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50303661 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50303728 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50309065 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50312414 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50312430 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50312745 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352121 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+30                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352155 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352163 BEW_VN=8 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352171 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352254 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352262 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352329 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352353 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50352452 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50353351 BEW_VN=8 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50357915 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50358989 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50400459 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50402059 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50403445 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+31                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=50406746 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50408859 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50408932 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50408958 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50412933 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50412941 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50450743 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50450769 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50454711 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50454737 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50456270 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50457955 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50459456 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50552961 BEW_VN=7 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50553761 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+32                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50553935 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50604928 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50605140 BEW_VN=10 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50606833 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50606932 BEW_VN=10 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50607047 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50610636 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50610917 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50612616 BEW_VN=9 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50612856 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50650161 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50650476 BEW_VN=7 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50650731 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50650765 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+33                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=50652018 BEW_VN=11 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50652026 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50652076 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50654022 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50656052 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50656218 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50656325 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50657018 BEW_VN=10 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50657042 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658222 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658446 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658545 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658561 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658579 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658587 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+34                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50658660 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50659791 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50659824 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50659882 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50702467 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50702516 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50713810 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50750135 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50750143 BEW_VN=7 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50750169 BEW_VN=11 DCH_N=3
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50750359 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50750812 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50750862 BEW_VN=7 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50751026 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+35                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=50751117 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50751456 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50751513 BEW_VN=10 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50751654 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50756349 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50756422 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50800641 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50801053 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50810129 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50850448 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50851371 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50851529 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50902918 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50905368 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50950743 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+36                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50950933 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50952632 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50952773 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50952822 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50952848 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=50952856 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51013079 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51100735 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51102830 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51102921 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51103739 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51104729 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51106311 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51107210 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+37                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=51109513 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51153130 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51154956 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51205543 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51206955 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51207268 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51213835 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51213918 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51214750 BEW_VN=9 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51255572 BEW_VN=10 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51259178 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51350215 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51450411 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51452540 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51501743 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+38                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51501826 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51503111 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51508210 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51513467 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51550568 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51555550 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51610338 BEW_VN=9 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51650178 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51658916 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51704355 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52013044 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+39                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=52050187 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52112250 BEW_VN=12 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52152537 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52256066 BEW_VN=11 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52257121 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52257329 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52812850 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52813155 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53360064 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53360171 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+40                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53405422 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53408335 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53408517 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53409010 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53610211 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53702539 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53756247 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54000750 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54109453 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54111523 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112810 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+41                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=54210531 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54212355 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54257666 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54300324 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54450947 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54509538 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54559426 BEW_VN=8 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54559541 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54658153 BEW_VN=9 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+42                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54702413 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54755446 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54758854 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54800936 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54850311 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54853430 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54953214 BEW_VN=11 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54953727 BEW_VN=7 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54954642 BEW_VN=7 DCH_N=1
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54954733 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=55011516 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=55057362 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=55058568 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+43                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=55158954 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=57517121 BEW_VN=2 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60102053 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60113216 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60114454 BEW_VN=9 DCH_N=2
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60201144 BEW_VN=11 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60212068 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60213719 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60213933 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60301647 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60358143 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60402411 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60451616 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60606154 BEW_VN=10 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60851139 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+44                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60911058 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=60911446 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013233 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013374 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013457 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61051267 BEW_VN=7 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61057538 BEW_VN=8 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=67500515 BEW_VN=2 DCH_N=0
+WARNING: The variable d351 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=67500717 BEW_VN=2 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 402 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           7:17.92
+      cpu time            54.99 seconds
+      
+
+
+45                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 398 variables.
+NOTE: DATA statement used (Total process time):
+      real time           16:24.90
+      cpu time            1:14.25
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           2.39 seconds
+      cpu time            2.37 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:14.60
+      cpu time            20.24 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 401 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3:39.37
+      cpu time            42.92 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 402 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           13:21.48
+      cpu time            58.59 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           3.03 seconds
+      cpu time            3.02 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      511512 at 705:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 403 variables.
+NOTE: DATA statement used (Total process time):
+      real time           7:37.28
+      cpu time            47.40 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+46                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           23.06 seconds
+      cpu time            16.89 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      511512 at 714:192   511512 at 714:200   23 at 714:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 402 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4:38.82
+      cpu time            43.98 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           6.92 seconds
+      cpu time            4.53 seconds
+      
+
+
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+47                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d359 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+48                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 403 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           8:00.39
+      cpu time            54.82 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 399 variables.
+NOTE: DATA statement used (Total process time):
+      real time           17:29.11
+      cpu time            1:14.50
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           11.92 seconds
+      cpu time            4.75 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 6 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           2:41.74
+      cpu time            21.23 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 402 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4:16.31
+      cpu time            43.83 seconds
+      
+
+
+NOTE: The data set WORK.AVG has 7629411 observations and 403 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           20:16.99
+      cpu time            58.77 seconds
+      
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           3.15 seconds
+      cpu time            2.87 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+49                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      260280 at 765:253   
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: The data set WORK.AVG has 7629411 observations and 404 variables.
+NOTE: DATA statement used (Total process time):
+      real time           10:34.06
+      cpu time            48.35 seconds
+      
+
+
+NOTE: The data set WORK.TMP has 10827 observations and 4 variables.
+NOTE: PROCEDURE UNIVARIATE used (Total process time):
+      real time           18.29 seconds
+      cpu time            16.73 seconds
+      
+
+
+NOTE: Missing values were generated as a result of performing an operation on missing values.
+      Each place is given by: (Number of times) at (Line):(Column).
+      260280 at 774:192   260280 at 774:200   23 at 774:211       
+NOTE: There were 7629411 observations read from the data set WORK.AVG.
+NOTE: There were 10827 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.OUT has 7629411 observations and 403 variables.
+NOTE: DATA statement used (Total process time):
+      real time           4:53.51
+      cpu time            43.63 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.AVG (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           5.38 seconds
+      cpu time            4.44 seconds
+      
+
+
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=44955189 BEW_VN=8 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=51754938 BEW_VN=10 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52012723 BEW_VN=9 DCH_N=2
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52014141 BEW_VN=7 DCH_N=1
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52050559 BEW_VN=9 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+50                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52102152 BEW_VN=8 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=52311141 BEW_VN=8 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53253524 BEW_VN=7 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53257039 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=53502442 BEW_VN=7 DCH_N=1
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54112828 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54153682 BEW_VN=8 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54214244 BEW_VN=9 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54252418 BEW_VN=9 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301215 BEW_VN=8 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301314 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54301512 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54350478 BEW_VN=9 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=54952414 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+51                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      CL_N=61013746 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61756156 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61809434 BEW_VN=6 DCH_N=0
+WARNING: The variable d379 has only 0 nonmissing observations, which is too few to apply the conversion method. The result series 
+         is set to missing.
+NOTE: The above message was for the following BY group:
+      CL_N=61909713 BEW_VN=6 DCH_N=0
+NOTE: The data set WORK.FULL has 7629411 observations and 404 variables.
+NOTE: PROCEDURE EXPAND used (Total process time):
+      real time           10:18.85
+      cpu time            57.08 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: There were 7629411 observations read from the data set WORK.FULL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS has 7629411 observations and 400 variables.
+NOTE: DATA statement used (Total process time):
+      real time           16:39.76
+      cpu time            1:14.66
+      
+
+NOTE: Deleting WORK.OUT (memtype=DATA).
+NOTE: Deleting WORK.FULL (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           4.72 seconds
+      cpu time            4.83 seconds
+      
+
+167        
+168        /* For TARGET variable */
+169        *%preprocess(dsn=&inputdsn., y=&target., KeyCol=&KeyCols.);
+170        
+171        data $inputdsn._PREP;
+ERROR: Libref ''$inputdsn'n' exceeds 8 characters.
+172        	set &inputdsn.(drop=&intlist.);
+173        run;
+
+NOTE: The SAS System stopped processing this step because of errors.
+NOTE: DATA statement used (Total process time):
+      real time           0.22 seconds
+      cpu time            0.00 seconds
+      
+
+174        
+175        /* end of program */
+
+ERROR: Errors printed on page 51.
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           10:09:10.24
+52                                                         The SAS System                              13:03 Monday, August 15, 2016
+
+      cpu time            1:01:30.40
+      

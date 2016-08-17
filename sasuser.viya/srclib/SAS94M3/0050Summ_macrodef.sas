@@ -1,58 +1,7 @@
-*;
-libname insaslib "/tmp/viya/" access=readonly;
-libname ousaslib "/tmp/v94/";
-*;
-
-%let inputdsn=ousaslib.skp1walsplusKeys_PREP;
-*%let inputdsn=ousaslib.crm3allplusKeys_PREP;
-*%let inputdsn=ousaslib.skp1small;
-
-/* NOTE: &KeyCols. are replaced with KeyCol */
-
-/* Determine interval variables. */
-/* TARGET column */
-%let target=d524;
-/* Key columns = BY variables: summarize 5" data per BY group */
-%let KeyCols=cl_n bew_vn dch_n _deel;
-%let INTERVAL=P_: &target. _x _pol;
-
-/* Divide into INTERVAL and BINARY/NOMINAL variables.
-   All bookkeeping, missing, unary variables (except for Key columns) should have been removed by now. */
-data &inputdsn._NOINTERVAL(drop=&KeyCols. ts_registratie &INTERVAL. ts_be ts_ei _vars) &inputdsn._INTERVAL(keep=KeyCol ts_registratie &INTERVAL.);
-	length _vars $6000;
-	_vars = "&target. _x _pol";
-	set &inputdsn.;
-	array _p{*} P_:;
-	if _n_=1 then do;
-	    do i = 1 to dim(_p);
-	    	_vars = catx(" ", _vars, vname(_p{i}));
-	    end;
-	    call symputx("intlist", _vars);
-    end;
-	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
-	output &inputdsn._NOINTERVAL &inputdsn._INTERVAL;
-run;
-
-
-
-proc sort data=&inputdsn._NOINTERVAL;
-	by KeyCol;
-run;
-data &inputdsn._BASE;
-	set &inputdsn._NOINTERVAL(keep=KeyCol); /* INTERVAL would have worked as well */
-	by KeyCol;
-	if first.KeyCol then output;
-run;
-
-
-
-/*  Do some cool stuff with TSDR in SAS Enterprise Miner to summarize &inputdsn._INTERVAL.
-	OR:
-*/
 /* INTERVAL */
 %macro mergeMeansStddevsWInterval();
 	
-	data &inputdsn._TSDR;
+	data &inputdsn._SUMM;
   		set &inputdsn._BASE;
   	run;
 	
@@ -69,9 +18,31 @@ run;
 		proc sort data=work.tmp;
 			by KeyCol;
 		run;
-		
+
+/*
+1          OPTIONS NONOTES NOSTIMER NOSOURCE NOSYNTAXCHECK;
+ 55         
+ 56         data _null_;
+ 57         retain x;
+ 58         set ousaslib.crm3allplusKeys_PREP_NOINTERVAL(keep=KeyCol) end=eof;
+ 59         by KeyCol;
+ 60         if first.KeyCol then i = 0;
+ 61         i+1;
+ 62         if last.KeyCol then do;
+ 63         if i > x then x=i;
+ 64         end;
+ 65         if eof then put x=;
+ 66         run;
+ 
+ x=35926
+ NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_NOINTERVAL.
+ NOTE: DATA statement used (Total process time):
+       real time           14.20 seconds
+       cpu time            14.22 seconds
+*/
+
 		data Means(drop=&int. Mean stddev x: i j);
-			array x{3000}; 
+			array x{36000}; 
 	  		do until (last.KeyCol);
 	    		set work.tmp;
 	    		by KeyCol;
@@ -86,8 +57,8 @@ run;
   		run;
   		
   		/* Then merge. */
-  		data &inputdsn._TSDR;
-  			merge &inputdsn._TSDR Means;
+  		data &inputdsn._SUMM;
+  			merge &inputdsn._SUMM Means;
   			by KeyCol;
   		run;
   		
@@ -99,34 +70,6 @@ run;
   	%end;
 
 %mend;
-
-
-
-/* For now, 
-	BINARY 0/1: proportion 1's
-	NOMINAL variables: mode
-*/
-
-/* Determine binary variables and collect them into binlist. */
-%include '/home/sastest/sbxviya/sasuser.viya/srclib/SAS94M3/0042DetermineBINColumns.sas';
-%put &=binlist.;
-
-/* To get an exhaustive nomlist: */
-data _null_;
-	if _n_=1 then set &inputdsn._NOINTERVAL(drop=&binlist. obs=1);
-	length _vars $6000;
-	array _n _numeric_ _dumn; 
-	array _c _character_ _dumc; 
-	do i = 1 to dim(_n)-1;       /* -1 because of dummy _dumn */
-    	_vars = catx(" ", _vars, vname(_n{i}));
-    end;
-	do i = 1 to dim(_c)-1;       /* -1 because of dummy _dumc */
-    	if not (vname(_c{i})="KeyCol" or vname(_c{i})="_vars") then _vars = catx(" ", _vars, vname(_c{i}));
-    end;
-	call symputx("nomlist", _vars);
-run;
-%put &=nomlist.;
-
 
 /* BINARY */
 %macro mergePropsWBinary();
@@ -190,7 +133,6 @@ run;
 
 %mend;
 
-
 /* NOMINAL */
 %macro mergeModesWNominal();
 	
@@ -238,11 +180,4 @@ run;
 
 %mend;
 
-*options source2;
-
-%mergeMeansStddevsWInterval()
-%mergePropsWBinary();	
-%mergeModesWNominal();
-
 /* end of program */
-

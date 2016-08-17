@@ -123,7 +123,7 @@ run;*/
 	run;
 
 	/* Determine interval variables. */
-	%include '/home/sastest/sbxviya/sasuser.viya/srclib/SAS94M3/0041DetermineIntColumns.sas';
+	%include '/home/sastest/sbxviya/sasuser.viya/srclib/SAS94M3/0041DetermineINTColumns.sas';
 	%put &=intlist.; /* interval variables */
 
 	%let nvar=%sysfunc(countw(&intlist.,%str( )));
@@ -144,7 +144,7 @@ run;*/
 /* For TARGET variable */
 *%preprocess(dsn=&inputdsn., y=&target., KeyCol=&KeyCols.);
 
-data $inputdsn._PREP;
+data &inputdsn._PREP;
 	set &inputdsn.(drop=&intlist.);
 run;
 

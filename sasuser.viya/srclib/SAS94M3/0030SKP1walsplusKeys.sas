@@ -44,7 +44,7 @@ data ousaslib.skp1walsplusKeys;
 				_pol = 0;
 			end;
 			if d382 then do;
-				_pol = _pol + 5;		/* Polijsten + 5s */
+				_pol = _pol + 5;		/* Polijsten + 5s INTCK INTNX */
 			end;
 		end;
 	drop _walsen _dx;
