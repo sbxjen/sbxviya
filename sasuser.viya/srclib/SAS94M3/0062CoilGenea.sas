@@ -17,19 +17,14 @@ proc sort data=insaslib.matm2(keep=
 			out=work.mycoils;
 	where cl_n = "50603615";
 	*where cl_n in ("50603615", "50609621", "52010933", "62312155");
-	by cl_n dch_n bew_vn;
+	by cl_n bew_vn dch_n;
 run;
 
 /* DDCG? */
 
 options mprint source2;
-filename sascode temp;
 
-data _null_;
-	file sascode;	
-run;
-
-/* Select a KEY to work with, e.g. from skp1allplusKeys */ 
+/* Select a KEY to work with, e.g. from skp1walsplusKeys */ 
 data matm2OnlyThisCoil;
 	set work.mycoils(firstobs=8 obs=8 keep=	cl_n dch_n bew_vn 
 											dch_n_vr 
@@ -84,6 +79,5 @@ data matm2OnlyThisCoil2;
 run;
 proc append base=matm2OnlyThisCoil data=matm2OnlyThisCoil2; run;
 proc datasets library=work nolist;
-	delete matm2OnlyThisCoil2 / memtype=data; run;
-	delete mycoils / memtype=data; run;
+	delete matm2OnlyThisCoil2 mycoils / memtype=data; run;
 quit;

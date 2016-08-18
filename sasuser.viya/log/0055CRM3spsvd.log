@@ -1,0 +1,853 @@
+1                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+      
+1          /* 	
+2          	1. stdize
+3          	2. coo
+4          	3. spsvd
+5          */
+6          	
+7          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+8          
+9          *%let inputdsn=ousaslib.skp1small_PREP;
+10         *%let inputdsn=ousaslib.skp1walsplusKeys_PREP;
+11         %let inputdsn=ousaslib.crm3allplusKeys_PREP;
+12         
+13         /* 	inputdsn contains 2 target variables: d524 (raw) and P_d524 (smoothed).
+14         	0054SKP1Summ_target.sas creates a cross-sectional target variable, so we can drop these 2 variables here.
+2                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+15         	Also _pol is a constant per cross-sectional observation.
+16          */
+17         /*%let todrop=d524 P_d524 _pol _x;
+18         data &inputdsn._INTERVAL;
+19         	set &inputdsn._INTERVAL(drop=&todrop.);
+20         run;*/
+21         	
+22         /* Determine interval variables (This is the last time - I promise!). */
+23         data _null_;
+24         	set &inputdsn._INTERVAL(obs=1);
+25         	array _p{*} P_:;
+26         	length _vars $6000;
+27         	_vars = ""; * _vars="_x";
+28         	if _n_=1 then do;
+29         	    do i = 1 to dim(_p);
+30         	    	_vars = catx(" ", _vars, vname(_p{i}));
+31         	    end;
+32         	    call symputx("intlist", _vars);
+33             end;
+34         run;
+
+NOTE: There were 1 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+35         %put &=intlist.;
+INTLIST=P_d251 P_d252 P_d254 P_d256 P_d262 P_d282 P_d283 P_d351 P_d359 P_d379
+36         
+37         /* 1. stdize */
+38         proc stdize data=&inputdsn._INTERVAL out=&inputdsn._INTERVAL method=std;
+39         	var &intlist.;
+40         run;
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL has 7629411 observations and 12 variables.
+NOTE: PROCEDURE STDIZE used (Total process time):
+      real time           9.60 seconds
+      cpu time            9.61 seconds
+      
+
+41         
+42         %macro spsvd();
+43         
+44         	/* Like in 0051/0052, start from &inputdsn._BASE */
+45         	data &inputdsn._TSDR;
+46         		set &inputdsn._BASE;
+47           	run;
+48           	
+49         	%let nvar=%sysfunc(countw(&intlist.,%str( )));
+50         	%do ivar=1 %to &nvar.;
+51         		%let int=%scan(&intlist.,&ivar.);
+52         		
+53         		data work.tmp;
+54         			set &inputdsn._INTERVAL(keep=KeyCol &int.);
+55         		run;
+56         		proc sort data=work.tmp;
+3                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+57         			by KeyCol;
+58         		run;
+59         		/* work.tmp represents a flattened m x T table with m different KeyCols and T Time IDs.
+60         		
+61         		/* 2. coo */
+62         		/* Create a table in COO format for each interval variable. */
+63         		data work.spsvdIn(keep=row col entry);
+64         			set work.tmp;
+65         			by KeyCol;
+66         			retain col row 0;
+67         			if first.KeyCol then do;
+68         				row+1;
+69         				col=0;
+70         			end;
+71         			col+1;
+72         			entry=&int.;
+73         			if not (entry eq 0 or entry eq .) then output;
+74         		run;
+75         		
+76         		/* 3. spsvd */
+77         		proc spsvd data=work.spsvdIn
+78         			local=none max_k=10 res=low; /* global = weight equal to 1 */ /* In practice, no more then k=10 will be needed. */
+79         			output S=S ROWPRO=ROWPRO;
+80         		run;
+81         		
+82         		/* Determine k */
+83         		data _null_;
+84         			retain _k 0;
+85         			set work.S(keep=KEEP);
+86         			if not KEEP then do;
+87         				call symputx('k', _k);
+88         				stop;
+89         			end;
+90         			else _k+1;
+91         		run;
+92         		
+93         		/* Combine */
+94         		data &inputdsn._TSDR;
+95         			merge &inputdsn._TSDR work.ROWPRO(keep=Col1-Col&k. rename=(Col1-Col&k.=&int._Col1-&int._Col&k.));
+96         		run;
+97         		
+98         		proc datasets library=work nolist;
+99         		 	delete tmp spsvdIn ROWPRO S / memtype=data;
+100        		run;
+101        		quit;
+102        		
+103        	%end;
+104        
+105        %mend;
+106        
+107        %spsvd();
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_BASE.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 1 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+4                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.70 seconds
+      cpu time            3.71 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.86 seconds
+      cpu time            20.12 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7586302 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.75 seconds
+      cpu time            2.76 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7586302 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.49 seconds
+      cpu time            12.50 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+5                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           1.46 seconds
+      cpu time            0.38 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.56 seconds
+      cpu time            3.56 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           13.67 seconds
+      cpu time            21.40 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7586771 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.59 seconds
+      cpu time            2.59 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7586771 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.42 seconds
+      cpu time            12.44 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+6                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.33 seconds
+      cpu time            0.34 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.56 seconds
+      cpu time            3.56 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.51 seconds
+      cpu time            21.12 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7586478 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.66 seconds
+      cpu time            2.66 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7586478 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.52 seconds
+      cpu time            12.54 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+7                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.34 seconds
+      cpu time            0.35 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.74 seconds
+      cpu time            3.74 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.26 seconds
+      cpu time            20.18 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7622142 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.77 seconds
+      cpu time            2.78 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 5 for K.
+NOTE: There were 7622142 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.63 seconds
+      cpu time            12.63 seconds
+      
+
+
+NOTE: There were 6 observations read from the data set WORK.S.
+8                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 12 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.34 seconds
+      cpu time            0.34 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.60 seconds
+      cpu time            3.62 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.16 seconds
+      cpu time            20.08 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7622143 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.70 seconds
+      cpu time            2.70 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7622143 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+9                                                          The SAS System                            09:43 Thursday, August 18, 2016
+
+      real time           12.62 seconds
+      cpu time            12.67 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 14 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.33 seconds
+      cpu time            0.32 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.66 seconds
+      cpu time            3.66 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.36 seconds
+      cpu time            20.89 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7528954 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.68 seconds
+      cpu time            2.69 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+10                                                         The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7528954 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.45 seconds
+      cpu time            12.45 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 16 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.33 seconds
+      cpu time            0.34 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.61 seconds
+      cpu time            3.61 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.25 seconds
+      cpu time            20.46 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7615128 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.62 seconds
+11                                                         The SAS System                            09:43 Thursday, August 18, 2016
+
+      cpu time            2.62 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7615128 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.58 seconds
+      cpu time            12.59 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 18 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.37 seconds
+      cpu time            0.38 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.69 seconds
+      cpu time            3.68 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.61 seconds
+      cpu time            21.40 seconds
+      
+12                                                         The SAS System                            09:43 Thursday, August 18, 2016
+
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7430492 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.60 seconds
+      cpu time            2.61 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 3 for K.
+NOTE: There were 7430492 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10584 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.29 seconds
+      cpu time            12.30 seconds
+      
+
+
+NOTE: There were 4 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10584 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 21 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.35 seconds
+      cpu time            0.36 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: DATA statement used (Total process time):
+      real time           3.63 seconds
+      cpu time            3.64 seconds
+      
+
+
+13                                                         The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.41 seconds
+      cpu time            20.88 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7591473 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.63 seconds
+      cpu time            2.64 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7591473 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.51 seconds
+      cpu time            12.52 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 23 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.33 seconds
+      cpu time            0.34 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_INTERVAL.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+14                                                         The SAS System                            09:43 Thursday, August 18, 2016
+
+NOTE: DATA statement used (Total process time):
+      real time           3.62 seconds
+      cpu time            3.63 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.TMP has 7629411 observations and 2 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           8.45 seconds
+      cpu time            20.63 seconds
+      
+
+
+NOTE: There were 7629411 observations read from the data set WORK.TMP.
+NOTE: The data set WORK.SPSVDIN has 7576204 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.66 seconds
+      cpu time            2.66 seconds
+      
+
+
+NOTE: P has been set to 75.
+NOTE: Singular values have converged.  Creating data sets.
+NOTE: Restarted 0 times.
+NOTE: Using value of 2 for K.
+NOTE: There were 7576204 observations read from the data set WORK.SPSVDIN.
+NOTE: The data set WORK.S has 10 observations and 2 variables.
+NOTE: The data set WORK.ROWPRO has 10804 observations and 11 variables.
+NOTE: PROCEDURE SPSVD used (Total process time):
+      real time           12.52 seconds
+      cpu time            12.53 seconds
+      
+
+
+NOTE: There were 3 observations read from the data set WORK.S.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: There were 10804 observations read from the data set WORK.ROWPRO.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR has 10827 observations and 25 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+
+
+NOTE: Deleting WORK.TMP (memtype=DATA).
+NOTE: Deleting WORK.SPSVDIN (memtype=DATA).
+NOTE: Deleting WORK.ROWPRO (memtype=DATA).
+NOTE: Deleting WORK.S (memtype=DATA).
+
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.35 seconds
+15                                                         The SAS System                            09:43 Thursday, August 18, 2016
+
+      cpu time            0.36 seconds
+      
+
+108        
+109        /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           4:52.28
+      cpu time            6:48.84
+      

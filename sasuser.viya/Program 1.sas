@@ -6,6 +6,14 @@ libname ousaslib "/tmp/v94/";
 <<<<<<< HEAD
 proc print data=ousaslib.crm3allplusKeys_PREP_INTERVAL(obs=1000); run;
 
+proc contents data=ousaslib.CRM3allplusKeys_ORIG; run;
+
+data ousaslib.skp1small_PREP_ALL;
+	set &inputdsn._PREP_ALL(obs=100);
+run;
+
+data stront;
+run;
 
 data work.tmp;
 	input KeyCol x;

@@ -7,17 +7,17 @@
 libname ousaslib "/tmp/v94/";
 
 *%let inputdsn=ousaslib.skp1small_PREP;
-%let inputdsn=ousaslib.skp1walsplusKeys_PREP;
-*%let inputdsn=ousaslib.crm3plusKeys_PREP;
+*%let inputdsn=ousaslib.skp1walsplusKeys_PREP;
+%let inputdsn=ousaslib.crm3allplusKeys_PREP;
 
 /* 	inputdsn contains 2 target variables: d524 (raw) and P_d524 (smoothed).
 	0054SKP1Summ_target.sas creates a cross-sectional target variable, so we can drop these 2 variables here.
 	Also _pol is a constant per cross-sectional observation. 
  */
-%let todrop=d524 P_d524 _pol _x;
+/*%let todrop=d524 P_d524 _pol _x;
 data &inputdsn._INTERVAL;
 	set &inputdsn._INTERVAL(drop=&todrop.);
-run;
+run;*/
 	
 /* Determine interval variables (This is the last time - I promise!). */
 data _null_;

@@ -1,0 +1,178 @@
+1                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+2          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+3          
+4          /* First make sure that the data sets have the same number of Obs */
+5          /* Then: */
+6          
+7          %let inputdsn=ousaslib.crm3allplusKeys;
+8          
+9          data &inputdsn._PREP_ALL;
+10         	merge 	&inputdsn._PREP_BINARY
+11         			&inputdsn._PREP_NOMINAL
+2                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+12         			&inputdsn._PREP_SUMM
+13         			&inputdsn._PREP_TSDR;
+14         	by Keycol;
+15         run;
+
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_BINARY.
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_NOMINAL.
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_SUMM.
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_TSDR.
+NOTE: The data set OUSASLIB.CRM3ALLPLUSKEYS_PREP_ALL has 10827 observations and 419 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.13 seconds
+      cpu time            0.14 seconds
+      
+
+16         proc sql feedback stimer _method noprint;
+NOTE: SQL Statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+17         	create table &inputdsn. as
+18         	select a.*, 	
+19         					b.cl_n, b.bew_vn, b.dch_n, 	
+20         					b.dch_n_vr,
+21         					b.a_dch, b.dl_n_lei, b.dl_n_leu, b.dl_n_bri, b.dl_n_bru,
+22         					b.ln_pr
+23          	from &inputdsn._PREP_ALL 		a
+24               	 left join ousaslib.matm2 	b
+25          	on a.KeyCol = b.KeyCol
+26          	order by a.KeyCol;
+NOTE: Statement transforms to:
+
+        select A.KeyCol, A.d001, A.d002, A.d018, A.d019, A.d020, A.d021, A.d022, A.d023, A.d024, A.d025, A.d026, A.d027, A.d028, 
+A.d029, A.d030, A.d031, A.d064, A.d073, A.d079, A.d128, A.d145, A.d146, A.d147, A.d148, A.d149, A.d150, A.d151, A.d152, A.d153, 
+A.d154, A.d155, A.d156, A.d157, A.d158, A.d159, A.d160, A.d161, A.d162, A.d163, A.d164, A.d165, A.d166, A.d167, A.d168, A.d169, 
+A.d170, A.d171, A.d172, A.d173, A.d174, A.d175, A.d176, A.d177, A.d178, A.d179, A.d180, A.d181, A.d182, A.d183, A.d184, A.d185, 
+A.d186, A.d191, A.d192, A.d193, A.d194, A.d204, A.d205, A.d206, A.d209, A.d238, A.d255, A.d263, A.d264, A.d265, A.d275, A.d276, 
+A.d277, A.d278, A.d284, A.d285, A.d286, A.d287, A.d288, A.d289, A.d290, A.d292, A.d293, A.d294, A.d295, A.d296, A.d297, A.d298, 
+A.d299, A.d300, A.d301, A.d302, A.d303, A.d304, A.d305, A.d306, A.d307, A.d308, A.d309, A.d310, A.d311, A.d313, A.d314, A.d329, 
+A.d330, A.d331, A.d336, A.d337, A.d338, A.d339, A.d340, A.d341, A.d342, A.d343, A.d344, A.d345, A.d346, A.d347, A.d360, A.d361, 
+A.d363, A.d364, A.d365, A.d366, A.d367, A.d368, A.d369, A.d370, A.d371, A.d372, A.d003, A.d004, A.d005, A.d006, A.d007, A.d008, 
+A.d009, A.d010, A.d011, A.d012, A.d013, A.d014, A.d015, A.d016, A.d017, A.d033, A.d034, A.d035, A.d036, A.d037, A.d038, A.d039, 
+A.d040, A.d041, A.d042, A.d043, A.d044, A.d045, A.d046, A.d048, A.d049, A.d050, A.d051, A.d052, A.d053, A.d054, A.d055, A.d056, 
+A.d057, A.d058, A.d059, A.d060, A.d061, A.d062, A.d063, A.d065, A.d066, A.d067, A.d068, A.d069, A.d070, A.d071, A.d072, A.d074, 
+A.d075, A.d076, A.d077, A.d078, A.d080, A.d081, A.d082, A.d083, A.d084, A.d085, A.d086, A.d087, A.d088, A.d089, A.d090, A.d091, 
+A.d092, A.d093, A.d094, A.d095, A.d096, A.d097, A.d098, A.d099, A.d100, A.d101, A.d102, A.d103, A.d104, A.d105, A.d106, A.d107, 
+A.d108, A.d109, A.d110, A.d111, A.d112, A.d113, A.d114, A.d115, A.d116, A.d117, A.d118, A.d119, A.d120, A.d121, A.d122, A.d123, 
+A.d124, A.d125, A.d126, A.d127, A.d129, A.d130, A.d133, A.d134, A.d135, A.d136, A.d137, A.d138, A.d139, A.d140, A.d141, A.d142, 
+A.d143, A.d144, A.d187, A.d188, A.d189, A.d190, A.d195, A.d196, A.d197, A.d198, A.d199, A.d200, A.d201, A.d202, A.d203, A.d207, 
+A.d208, A.d210, A.d211, A.d212, A.d213, A.d214, A.d215, A.d216, A.d217, A.d218, A.d219, A.d220, A.d221, A.d222, A.d223, A.d224, 
+A.d225, A.d226, A.d227, A.d228, A.d229, A.d230, A.d231, A.d232, A.d233, A.d234, A.d235, A.d236, A.d237, A.d239, A.d240, A.d241, 
+A.d242, A.d243, A.d244, A.d245, A.d246, A.d247, A.d248, A.d249, A.d250, A.d253, A.d257, A.d258, A.d259, A.d260, A.d261, A.d266, 
+A.d267, A.d268, A.d269, A.d270, A.d271, A.d272, A.d273, A.d274, A.d279, A.d280, A.d281, A.d315, A.d316, A.d317, A.d318, A.d319, 
+A.d320, A.d321, A.d322, A.d323, A.d324, A.d325, A.d326, A.d327, A.d328, A.d332, A.d333, A.d334, A.d335, A.d348, A.d349, A.d350, 
+A.d352, A.d353, A.d354, A.d355, A.d356, A.d357, A.d358, A.d362, A.d373, A.d374, A.d375, A.d376, A.d377, A.d378, A.d380, A.d381, 
+A.d382, A.d383, A.d384, A.d385, A.d386, A.d387, A.d388, A.d389, A.d390, A.P_d251_Mean, A.P_d251_Stddev, A.P_d252_Mean, 
+A.P_d252_Stddev, A.P_d254_Mean, A.P_d254_Stddev, A.P_d256_Mean, A.P_d256_Stddev, A.P_d262_Mean, A.P_d262_Stddev, A.P_d282_Mean, 
+A.P_d282_Stddev, A.P_d283_Mean, A.P_d283_Stddev, A.P_d351_Mean, A.P_d351_Stddev, A.P_d359_Mean, A.P_d359_Stddev, A.P_d379_Mean, 
+3                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+A.P_d379_Stddev, A.P_d251_Col1, A.P_d251_Col2, A.P_d252_Col1, A.P_d252_Col2, A.P_d254_Col1, A.P_d254_Col2, A.P_d256_Col1, 
+A.P_d256_Col2, A.P_d256_Col3, A.P_d256_Col4, A.P_d256_Col5, A.P_d262_Col1, A.P_d262_Col2, A.P_d282_Col1, A.P_d282_Col2, 
+A.P_d283_Col1, A.P_d283_Col2, A.P_d351_Col1, A.P_d351_Col2, A.P_d351_Col3, A.P_d359_Col1, A.P_d359_Col2, A.P_d379_Col1, 
+A.P_d379_Col2, B.CL_N, B.BEW_VN, B.DCH_N, B.DCH_N_VR, B.A_DCH, B.DL_N_LEI, B.DL_N_LEU, B.DL_N_BRI, B.DL_N_BRU, B.LN_PR
+          from OUSASLIB.CRM3ALLPLUSKEYS_PREP_ALL A left outer join OUSASLIB.MATM2 B on A.KeyCol = B.KeyCol
+      order by A.KeyCol asc;
+
+
+NOTE: SQL execution methods chosen are:
+
+      sqxcrta
+          sqxjm
+              sqxsort
+                  sqxsrc( OUSASLIB.MATM2(alias = B) )
+              sqxsort
+                  sqxsrc( OUSASLIB.CRM3ALLPLUSKEYS_PREP_ALL(alias = A) )
+NOTE: Table OUSASLIB.CRM3ALLPLUSKEYS created, with 10827 rows and 429 columns.
+
+NOTE: SQL Statement used (Total process time):
+      real time           0.55 seconds
+      cpu time            0.56 seconds
+      
+27         quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+28         
+29         /* Let's check ... */
+30         data _null_;
+31         	retain n 0;
+32         	set &inputdsn. end=last;
+33         	if upcase(ln_pr) ne "CRM3" then
+34         		do;
+35         			put ln_pr=;
+36         			n+1;
+37         		end;
+38         	if last then put n=;
+39         run;
+
+n=0
+NOTE: There were 10827 observations read from the data set OUSASLIB.CRM3ALLPLUSKEYS.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.04 seconds
+      
+
+40         
+41         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           0.75 seconds
+      cpu time            0.77 seconds
+      

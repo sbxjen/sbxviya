@@ -1,0 +1,324 @@
+1                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          libname insaslib "/tmp/viya/" access=readonly;
+NOTE: Libref INSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/viya
+2          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+3          
+4          
+5          /* This list was generated based on the Appendix: Predictor blocks and variables
+6             from Predictive Modelling for a Quality Target Based on High-Dimensional High-Frequency Data
+7             and common sense. */
+8          %let material_specific=br di le k_atp k_nm_atp k_afw knt_bb aust_fer wrk_n g g_in;
+9          
+10         data ousaslib.matm2(keep=	KeyCol
+11         							cl_n bew_vn dch_n 	
+2                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+12         							dch_n_vr
+13         							a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru
+14         							ln_pr
+15         							&material_specific.);
+16         	set insaslib.matm2;
+17         	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.));
+18         run;
+
+NOTE: There were 100134 observations read from the data set INSASLIB.MATM2.
+NOTE: The data set OUSASLIB.MATM2 has 100134 observations and 22 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.18 seconds
+      cpu time            0.17 seconds
+      
+
+19         
+20         
+21         /* First make sure that the data sets have the same number of Obs */
+22         /* Then: */
+23         
+24         %let inputdsn=ousaslib.skp1walsplusKeys; /* also TARGET */
+25         
+26         data &inputdsn._PREP_ALL;
+27         	merge 	&inputdsn._PREP_TARGET
+28         			&inputdsn._PREP_BINARY
+29         			&inputdsn._PREP_NOMINAL
+30         			&inputdsn._PREP_SUMM
+31         			&inputdsn._PREP_TSDR;
+32         	by Keycol;
+33         run;
+
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TARGET.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_BINARY.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_NOMINAL.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_SUMM.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TSDR.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_ALL has 23693 observations and 1163 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.88 seconds
+      cpu time            0.88 seconds
+      
+
+34         data &inputdsn._PREP_ALL(drop=cl_n bew_vn dch_n);
+35         	set &inputdsn._PREP_ALL;
+36         	cl_n 	= scan(KeyCol,1,"_");
+37         	bew_vn 	= scan(KeyCol,2,"_");
+38         	dch_n 	= scan(KeyCol,3,"_");
+39         	KeyCol_deel = KeyCol;
+40         	KeyCol = catx("_", cl_n, bew_vn, dch_n);
+41         run;
+
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_ALL.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_ALL has 23693 observations and 1164 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.52 seconds
+      cpu time            0.53 seconds
+      
+
+3                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+42         proc sql feedback stimer _method noprint;
+NOTE: SQL Statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+43         	create table &inputdsn. as
+44         	select a.*, b.*
+45          	from &inputdsn._PREP_ALL 		a
+46               	 left join ousaslib.matm2 	b
+47          	on a.KeyCol = b.KeyCol
+48          	order by a.KeyCol_deel;
+NOTE: Statement transforms to:
+
+        select A.norm_dd_x, A.KeyCol, A.d001, A.d002, A.d049, A.d185, A.d190, A.d200, A.d205, A.d207, A.d349, A.d350, A.d363, 
+A.d369, A.d372, A.d376, A.d390, A.d432, A.d433, A.d434, A.d467, A.d468, A.d478, A.d481, A.d485, A.d494, A.d495, A.d496, A.d497, 
+A.d498, A.d499, A.d500, A.d501, A.d502, A.d528, A.d529, A.d530, A.d531, A.d532, A.d533, A.tBolvorm, A.tTijdAfwerkenUUMMSS, 
+A.bTijdAfwerkenUUMMSS, A.d009, A.d010, A.d011, A.d031, A.d034, A.d035, A.d039, A.d040, A.d041, A.d045, A.d050, A.d066, A.d068, 
+A.d069, A.d072, A.d073, A.d074, A.d076, A.d077, A.d079, A.d080, A.d081, A.d082, A.d083, A.d086, A.d088, A.d091, A.d094, A.d097, 
+A.d100, A.d103, A.d106, A.d109, A.d110, A.d112, A.d115, A.d118, A.d121, A.d124, A.d125, A.d126, A.d128, A.d129, A.d130, A.d131, 
+A.d133, A.d134, A.d135, A.d136, A.d137, A.d140, A.d146, A.d152, A.d169, A.d172, A.d174, A.d177, A.d180, A.d181, A.d182, A.d184, 
+A.d186, A.d187, A.d188, A.d189, A.d191, A.d192, A.d193, A.d194, A.d195, A.d196, A.d197, A.d198, A.d199, A.d201, A.d202, A.d203, 
+A.d204, A.d206, A.d208, A.d209, A.d210, A.d211, A.d212, A.d213, A.d214, A.d215, A.d216, A.d217, A.d218, A.d219, A.d223, A.d224, 
+A.d225, A.d228, A.d229, A.d230, A.d236, A.d237, A.d238, A.d248, A.d249, A.d250, A.d252, A.d261, A.d276, A.d278, A.d288, A.d293, 
+A.d294, A.d295, A.d296, A.d297, A.d298, A.d299, A.d305, A.d306, A.d308, A.d320, A.d328, A.d329, A.d330, A.d331, A.d332, A.d335, 
+A.d336, A.d337, A.d338, A.d339, A.d340, A.d346, A.d347, A.d348, A.d351, A.d352, A.d353, A.d354, A.d355, A.d357, A.d358, A.d360, 
+A.d361, A.d364, A.d365, A.d366, A.d367, A.d370, A.d373, A.d374, A.d375, A.d377, A.d379, A.d380, A.d382, A.d383, A.d384, A.d385, 
+A.d386, A.d387, A.d388, A.d389, A.d391, A.d393, A.d394, A.d397, A.d399, A.d401, A.d403, A.d404, A.d405, A.d406, A.d407, A.d408, 
+A.d409, A.d410, A.d411, A.d412, A.d413, A.d414, A.d415, A.d417, A.d418, A.d419, A.d420, A.d421, A.d422, A.d423, A.d424, A.d425, 
+A.d429, A.d430, A.d431, A.d435, A.d436, A.d437, A.d438, A.d439, A.d440, A.d441, A.d442, A.d443, A.d444, A.d445, A.d446, A.d450, 
+A.d452, A.d453, A.d454, A.d455, A.d456, A.d457, A.d459, A.d460, A.d465, A.d466, A.d479, A.d480, A.d482, A.d488, A.d489, A.d490, 
+A.d491, A.d492, A.d493, A.d503, A.d504, A.d505, A.d506, A.d507, A.d508, A.d509, A.d510, A.d511, A.d518, A.d519, A.d520, A.d534, 
+A.d535, A.d536, A.d537, A.d538, A.d539, A.d540, A.d541, A.d542, A.d543, A.d544, A.d545, A.d546, A.d547, A.d548, A.d549, A.d550, 
+A.d551, A.d565, A.d566, A.d567, A.d568, A.d569, A.d570, A.d571, A.d572, A.d573, A.d574, A.d575, A.tHistoryId, A.tComponentId, 
+A.tCilinderDiameterEindeMan, A.tAfname, A.tRuwheid, A.tOKVoorWals, A.tTijdAfruwen, A.tSlijpTijd, A.tSlijpsteenDiameter, A.tPause, 
+A.tHardheid, A.tFlagMSMQQE, A.tComponentDigits, A.bHistoryId, A.bComponentId, A.bCilinderDiameterEindeMan, A.bAfname, A.bRuwheid, 
+A.bOKVoorWals, A.bTijdAfruwen, A.bSlijpTijd, A.bSlijpsteenDiameter, A.bPause, A.bLagersTappenOK, A.bHardheid, A.bSlag, 
+A.bComponentDigits, A.K_TSTMAT, A.tComponentName, A.tProgrammaNaam, A.tWerkNummerSlijp, A.tOpligtijd, A.tCodeSlijpReden, 
+A.tSlijpOpmerking, A.tWerkNummerAfname, A.tTijdAfruwenUUMMSS, A.tSlijpTijdUUMMSS, A.bComponentName, A.bProgrammaNaam, 
+A.bWerkNummerSlijp, A.bOpligtijd, A.bCodeSlijpReden, A.bSlijpOpmerking, A.bWerkNummerAfname, A.bBolvorm, A.bTijdAfruwenUUMMSS, 
+A.bSlijpTijdUUMMSS, A.d524_Mean, A.d524_Stddev, A._x_Mean, A._x_Stddev, A._pol_Mean, A._pol_Stddev, A.P_d003_Mean, A.P_d003_Stddev, 
+A.P_d004_Mean, A.P_d004_Stddev, A.P_d005_Mean, A.P_d005_Stddev, A.P_d006_Mean, A.P_d006_Stddev, A.P_d007_Mean, A.P_d007_Stddev, 
+A.P_d008_Mean, A.P_d008_Stddev, A.P_d012_Mean, A.P_d012_Stddev, A.P_d013_Mean, A.P_d013_Stddev, A.P_d014_Mean, A.P_d014_Stddev, 
+A.P_d015_Mean, A.P_d015_Stddev, A.P_d016_Mean, A.P_d016_Stddev, A.P_d017_Mean, A.P_d017_Stddev, A.P_d018_Mean, A.P_d018_Stddev, 
+A.P_d019_Mean, A.P_d019_Stddev, A.P_d020_Mean, A.P_d020_Stddev, A.P_d021_Mean, A.P_d021_Stddev, A.P_d022_Mean, A.P_d022_Stddev, 
+A.P_d023_Mean, A.P_d023_Stddev, A.P_d024_Mean, A.P_d024_Stddev, A.P_d025_Mean, A.P_d025_Stddev, A.P_d026_Mean, A.P_d026_Stddev, 
+A.P_d027_Mean, A.P_d027_Stddev, A.P_d028_Mean, A.P_d028_Stddev, A.P_d029_Mean, A.P_d029_Stddev, A.P_d030_Mean, A.P_d030_Stddev, 
+A.P_d032_Mean, A.P_d032_Stddev, A.P_d033_Mean, A.P_d033_Stddev, A.P_d036_Mean, A.P_d036_Stddev, A.P_d037_Mean, A.P_d037_Stddev, 
+A.P_d038_Mean, A.P_d038_Stddev, A.P_d042_Mean, A.P_d042_Stddev, A.P_d043_Mean, A.P_d043_Stddev, A.P_d044_Mean, A.P_d044_Stddev, 
+A.P_d046_Mean, A.P_d046_Stddev, A.P_d047_Mean, A.P_d047_Stddev, A.P_d048_Mean, A.P_d048_Stddev, A.P_d051_Mean, A.P_d051_Stddev, 
+A.P_d052_Mean, A.P_d052_Stddev, A.P_d053_Mean, A.P_d053_Stddev, A.P_d054_Mean, A.P_d054_Stddev, A.P_d055_Mean, A.P_d055_Stddev, 
+A.P_d056_Mean, A.P_d056_Stddev, A.P_d057_Mean, A.P_d057_Stddev, A.P_d058_Mean, A.P_d058_Stddev, A.P_d059_Mean, A.P_d059_Stddev, 
+A.P_d060_Mean, A.P_d060_Stddev, A.P_d061_Mean, A.P_d061_Stddev, A.P_d062_Mean, A.P_d062_Stddev, A.P_d063_Mean, A.P_d063_Stddev, 
+A.P_d064_Mean, A.P_d064_Stddev, A.P_d065_Mean, A.P_d065_Stddev, A.P_d067_Mean, A.P_d067_Stddev, A.P_d070_Mean, A.P_d070_Stddev, 
+A.P_d071_Mean, A.P_d071_Stddev, A.P_d075_Mean, A.P_d075_Stddev, A.P_d078_Mean, A.P_d078_Stddev, A.P_d084_Mean, A.P_d084_Stddev, 
+A.P_d085_Mean, A.P_d085_Stddev, A.P_d089_Mean, A.P_d089_Stddev, A.P_d092_Mean, A.P_d092_Stddev, A.P_d095_Mean, A.P_d095_Stddev, 
+A.P_d098_Mean, A.P_d098_Stddev, A.P_d101_Mean, A.P_d101_Stddev, A.P_d104_Mean, A.P_d104_Stddev, A.P_d107_Mean, A.P_d107_Stddev, 
+A.P_d113_Mean, A.P_d113_Stddev, A.P_d116_Mean, A.P_d116_Stddev, A.P_d119_Mean, A.P_d119_Stddev, A.P_d122_Mean, A.P_d122_Stddev, 
+A.P_d138_Mean, A.P_d138_Stddev, A.P_d139_Mean, A.P_d139_Stddev, A.P_d141_Mean, A.P_d141_Stddev, A.P_d142_Mean, A.P_d142_Stddev, 
+4                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+A.P_d144_Mean, A.P_d144_Stddev, A.P_d145_Mean, A.P_d145_Stddev, A.P_d147_Mean, A.P_d147_Stddev, A.P_d148_Mean, A.P_d148_Stddev, 
+A.P_d149_Mean, A.P_d149_Stddev, A.P_d151_Mean, A.P_d151_Stddev, A.P_d153_Mean, A.P_d153_Stddev, A.P_d154_Mean, A.P_d154_Stddev, 
+A.P_d155_Mean, A.P_d155_Stddev, A.P_d156_Mean, A.P_d156_Stddev, A.P_d157_Mean, A.P_d157_Stddev, A.P_d158_Mean, A.P_d158_Stddev, 
+A.P_d159_Mean, A.P_d159_Stddev, A.P_d160_Mean, A.P_d160_Stddev, A.P_d161_Mean, A.P_d161_Stddev, A.P_d162_Mean, A.P_d162_Stddev, 
+A.P_d163_Mean, A.P_d163_Stddev, A.P_d164_Mean, A.P_d164_Stddev, A.P_d165_Mean, A.P_d165_Stddev, A.P_d168_Mean, A.P_d168_Stddev, 
+A.P_d171_Mean, A.P_d171_Stddev, A.P_d173_Mean, A.P_d173_Stddev, A.P_d176_Mean, A.P_d176_Stddev, A.P_d179_Mean, A.P_d179_Stddev, 
+A.P_d220_Mean, A.P_d220_Stddev, A.P_d221_Mean, A.P_d221_Stddev, A.P_d222_Mean, A.P_d222_Stddev, A.P_d226_Mean, A.P_d226_Stddev, 
+A.P_d227_Mean, A.P_d227_Stddev, A.P_d231_Mean, A.P_d231_Stddev, A.P_d232_Mean, A.P_d232_Stddev, A.P_d253_Mean, A.P_d253_Stddev, 
+A.P_d254_Mean, A.P_d254_Stddev, A.P_d255_Mean, A.P_d255_Stddev, A.P_d256_Mean, A.P_d256_Stddev, A.P_d257_Mean, A.P_d257_Stddev, 
+A.P_d258_Mean, A.P_d258_Stddev, A.P_d259_Mean, A.P_d259_Stddev, A.P_d260_Mean, A.P_d260_Stddev, A.P_d262_Mean, A.P_d262_Stddev, 
+A.P_d263_Mean, A.P_d263_Stddev, A.P_d264_Mean, A.P_d264_Stddev, A.P_d265_Mean, A.P_d265_Stddev, A.P_d266_Mean, A.P_d266_Stddev, 
+A.P_d267_Mean, A.P_d267_Stddev, A.P_d268_Mean, A.P_d268_Stddev, A.P_d269_Mean, A.P_d269_Stddev, A.P_d270_Mean, A.P_d270_Stddev, 
+A.P_d271_Mean, A.P_d271_Stddev, A.P_d272_Mean, A.P_d272_Stddev, A.P_d273_Mean, A.P_d273_Stddev, A.P_d274_Mean, A.P_d274_Stddev, 
+A.P_d275_Mean, A.P_d275_Stddev, A.P_d277_Mean, A.P_d277_Stddev, A.P_d279_Mean, A.P_d279_Stddev, A.P_d280_Mean, A.P_d280_Stddev, 
+A.P_d281_Mean, A.P_d281_Stddev, A.P_d282_Mean, A.P_d282_Stddev, A.P_d283_Mean, A.P_d283_Stddev, A.P_d284_Mean, A.P_d284_Stddev, 
+A.P_d285_Mean, A.P_d285_Stddev, A.P_d286_Mean, A.P_d286_Stddev, A.P_d287_Mean, A.P_d287_Stddev, A.P_d290_Mean, A.P_d290_Stddev, 
+A.P_d289_Mean, A.P_d289_Stddev, A.P_d291_Mean, A.P_d291_Stddev, A.P_d292_Mean, A.P_d292_Stddev, A.P_d300_Mean, A.P_d300_Stddev, 
+A.P_d309_Mean, A.P_d309_Stddev, A.P_d313_Mean, A.P_d313_Stddev, A.P_d314_Mean, A.P_d314_Stddev, A.P_d315_Mean, A.P_d315_Stddev, 
+A.P_d316_Mean, A.P_d316_Stddev, A.P_d317_Mean, A.P_d317_Stddev, A.P_d318_Mean, A.P_d318_Stddev, A.P_d319_Mean, A.P_d319_Stddev, 
+A.P_d324_Mean, A.P_d324_Stddev, A.P_d325_Mean, A.P_d325_Stddev, A.P_d326_Mean, A.P_d326_Stddev, A.P_d327_Mean, A.P_d327_Stddev, 
+A.P_d333_Mean, A.P_d333_Stddev, A.P_d334_Mean, A.P_d334_Stddev, A.P_d341_Mean, A.P_d341_Stddev, A.P_d342_Mean, A.P_d342_Stddev, 
+A.P_d343_Mean, A.P_d343_Stddev, A.P_d344_Mean, A.P_d344_Stddev, A.P_d345_Mean, A.P_d345_Stddev, A.P_d378_Mean, A.P_d378_Stddev, 
+A.P_d392_Mean, A.P_d392_Stddev, A.P_d395_Mean, A.P_d395_Stddev, A.P_d396_Mean, A.P_d396_Stddev, A.P_d400_Mean, A.P_d400_Stddev, 
+A.P_d402_Mean, A.P_d402_Stddev, A.P_d426_Mean, A.P_d426_Stddev, A.P_d427_Mean, A.P_d427_Stddev, A.P_d428_Mean, A.P_d428_Stddev, 
+A.P_d447_Mean, A.P_d447_Stddev, A.P_d448_Mean, A.P_d448_Stddev, A.P_d449_Mean, A.P_d449_Stddev, A.P_d451_Mean, A.P_d451_Stddev, 
+A.P_d458_Mean, A.P_d458_Stddev, A.P_d461_Mean, A.P_d461_Stddev, A.P_d462_Mean, A.P_d462_Stddev, A.P_d463_Mean, A.P_d463_Stddev, 
+A.P_d464_Mean, A.P_d464_Stddev, A.P_d469_Mean, A.P_d469_Stddev, A.P_d470_Mean, A.P_d470_Stddev, A.P_d471_Mean, A.P_d471_Stddev, 
+A.P_d472_Mean, A.P_d472_Stddev, A.P_d473_Mean, A.P_d473_Stddev, A.P_d474_Mean, A.P_d474_Stddev, A.P_d475_Mean, A.P_d475_Stddev, 
+A.P_d476_Mean, A.P_d476_Stddev, A.P_d477_Mean, A.P_d477_Stddev, A.P_d483_Mean, A.P_d483_Stddev, A.P_d484_Mean, A.P_d484_Stddev, 
+A.P_d486_Mean, A.P_d486_Stddev, A.P_d487_Mean, A.P_d487_Stddev, A.P_d512_Mean, A.P_d512_Stddev, A.P_d513_Mean, A.P_d513_Stddev, 
+A.P_d521_Mean, A.P_d521_Stddev, A.P_d522_Mean, A.P_d522_Stddev, A.P_d523_Mean, A.P_d523_Stddev, A.P_d525_Mean, A.P_d525_Stddev, 
+A.P_d526_Mean, A.P_d526_Stddev, A.P_d527_Mean, A.P_d527_Stddev, A.P_d524_Mean, A.P_d524_Stddev, A.P_d003_Col1, A.P_d003_Col2, 
+A.P_d004_Col1, A.P_d004_Col2, A.P_d005_Col1, A.P_d005_Col2, A.P_d006_Col1, A.P_d006_Col2, A.P_d007_Col1, A.P_d007_Col2, 
+A.P_d008_Col1, A.P_d008_Col2, A.P_d012_Col1, A.P_d012_Col2, A.P_d013_Col1, A.P_d013_Col2, A.P_d014_Col1, A.P_d014_Col2, 
+A.P_d015_Col1, A.P_d015_Col2, A.P_d016_Col1, A.P_d016_Col2, A.P_d017_Col1, A.P_d017_Col2, A.P_d018_Col1, A.P_d018_Col2, 
+A.P_d019_Col1, A.P_d019_Col2, A.P_d020_Col1, A.P_d020_Col2, A.P_d021_Col1, A.P_d021_Col2, A.P_d022_Col1, A.P_d022_Col2, 
+A.P_d023_Col1, A.P_d023_Col2, A.P_d024_Col1, A.P_d024_Col2, A.P_d025_Col1, A.P_d025_Col2, A.P_d026_Col1, A.P_d026_Col2, 
+A.P_d027_Col1, A.P_d027_Col2, A.P_d028_Col1, A.P_d028_Col2, A.P_d029_Col1, A.P_d029_Col2, A.P_d030_Col1, A.P_d030_Col2, 
+A.P_d032_Col1, A.P_d032_Col2, A.P_d033_Col1, A.P_d033_Col2, A.P_d036_Col1, A.P_d036_Col2, A.P_d037_Col1, A.P_d037_Col2, 
+A.P_d038_Col1, A.P_d038_Col2, A.P_d042_Col1, A.P_d042_Col2, A.P_d043_Col1, A.P_d043_Col2, A.P_d044_Col1, A.P_d044_Col2, 
+A.P_d046_Col1, A.P_d046_Col2, A.P_d047_Col1, A.P_d047_Col2, A.P_d048_Col1, A.P_d048_Col2, A.P_d051_Col1, A.P_d051_Col2, 
+A.P_d052_Col1, A.P_d052_Col2, A.P_d053_Col1, A.P_d053_Col2, A.P_d054_Col1, A.P_d054_Col2, A.P_d055_Col1, A.P_d055_Col2, 
+A.P_d056_Col1, A.P_d056_Col2, A.P_d057_Col1, A.P_d057_Col2, A.P_d058_Col1, A.P_d058_Col2, A.P_d059_Col1, A.P_d059_Col2, 
+A.P_d060_Col1, A.P_d060_Col2, A.P_d061_Col1, A.P_d061_Col2, A.P_d062_Col1, A.P_d062_Col2, A.P_d063_Col1, A.P_d063_Col2, 
+A.P_d064_Col1, A.P_d064_Col2, A.P_d065_Col1, A.P_d065_Col2, A.P_d067_Col1, A.P_d067_Col2, A.P_d070_Col1, A.P_d070_Col2, 
+A.P_d071_Col1, A.P_d071_Col2, A.P_d075_Col1, A.P_d075_Col2, A.P_d078_Col1, A.P_d078_Col2, A.P_d084_Col1, A.P_d084_Col2, 
+A.P_d085_Col1, A.P_d085_Col2, A.P_d089_Col1, A.P_d089_Col2, A.P_d092_Col1, A.P_d092_Col2, A.P_d095_Col1, A.P_d095_Col2, 
+A.P_d098_Col1, A.P_d098_Col2, A.P_d101_Col1, A.P_d101_Col2, A.P_d104_Col1, A.P_d104_Col2, A.P_d107_Col1, A.P_d107_Col2, 
+A.P_d113_Col1, A.P_d113_Col2, A.P_d116_Col1, A.P_d116_Col2, A.P_d119_Col1, A.P_d119_Col2, A.P_d122_Col1, A.P_d122_Col2, 
+A.P_d138_Col1, A.P_d138_Col2, A.P_d139_Col1, A.P_d139_Col2, A.P_d141_Col1, A.P_d141_Col2, A.P_d142_Col1, A.P_d142_Col2, 
+A.P_d144_Col1, A.P_d144_Col2, A.P_d145_Col1, A.P_d145_Col2, A.P_d147_Col1, A.P_d147_Col2, A.P_d148_Col1, A.P_d148_Col2, 
+A.P_d149_Col1, A.P_d149_Col2, A.P_d151_Col1, A.P_d151_Col2, A.P_d153_Col1, A.P_d153_Col2, A.P_d154_Col1, A.P_d154_Col2, 
+A.P_d155_Col1, A.P_d155_Col2, A.P_d156_Col1, A.P_d156_Col2, A.P_d157_Col1, A.P_d157_Col2, A.P_d158_Col1, A.P_d158_Col2, 
+A.P_d159_Col1, A.P_d159_Col2, A.P_d160_Col1, A.P_d160_Col2, A.P_d161_Col1, A.P_d161_Col2, A.P_d162_Col1, A.P_d162_Col2, 
+A.P_d163_Col1, A.P_d163_Col2, A.P_d164_Col1, A.P_d164_Col2, A.P_d165_Col1, A.P_d165_Col2, A.P_d168_Col1, A.P_d168_Col2, 
+A.P_d171_Col1, A.P_d171_Col2, A.P_d173_Col1, A.P_d173_Col2, A.P_d176_Col1, A.P_d176_Col2, A.P_d179_Col1, A.P_d179_Col2, 
+A.P_d220_Col1, A.P_d220_Col2, A.P_d221_Col1, A.P_d221_Col2, A.P_d222_Col1, A.P_d222_Col2, A.P_d226_Col1, A.P_d226_Col2, 
+A.P_d227_Col1, A.P_d227_Col2, A.P_d231_Col1, A.P_d231_Col2, A.P_d232_Col1, A.P_d232_Col2, A.P_d253_Col1, A.P_d253_Col2, 
+5                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+A.P_d254_Col1, A.P_d254_Col2, A.P_d255_Col1, A.P_d255_Col2, A.P_d256_Col1, A.P_d256_Col2, A.P_d257_Col1, A.P_d257_Col2, 
+A.P_d258_Col1, A.P_d258_Col2, A.P_d259_Col1, A.P_d259_Col2, A.P_d260_Col1, A.P_d260_Col2, A.P_d262_Col1, A.P_d262_Col2, 
+A.P_d263_Col1, A.P_d263_Col2, A.P_d264_Col1, A.P_d264_Col2, A.P_d265_Col1, A.P_d265_Col2, A.P_d266_Col1, A.P_d266_Col2, 
+A.P_d267_Col1, A.P_d267_Col2, A.P_d268_Col1, A.P_d268_Col2, A.P_d269_Col1, A.P_d269_Col2, A.P_d270_Col1, A.P_d270_Col2, 
+A.P_d271_Col1, A.P_d271_Col2, A.P_d272_Col1, A.P_d272_Col2, A.P_d273_Col1, A.P_d273_Col2, A.P_d274_Col1, A.P_d274_Col2, 
+A.P_d275_Col1, A.P_d275_Col2, A.P_d277_Col1, A.P_d277_Col2, A.P_d279_Col1, A.P_d279_Col2, A.P_d280_Col1, A.P_d280_Col2, 
+A.P_d281_Col1, A.P_d281_Col2, A.P_d282_Col1, A.P_d282_Col2, A.P_d283_Col1, A.P_d283_Col2, A.P_d284_Col1, A.P_d284_Col2, 
+A.P_d285_Col1, A.P_d285_Col2, A.P_d286_Col1, A.P_d286_Col2, A.P_d287_Col1, A.P_d287_Col2, A.P_d290_Col1, A.P_d290_Col2, 
+A.P_d289_Col1, A.P_d289_Col2, A.P_d291_Col1, A.P_d291_Col2, A.P_d292_Col1, A.P_d292_Col2, A.P_d300_Col1, A.P_d300_Col2, 
+A.P_d309_Col1, A.P_d309_Col2, A.P_d313_Col1, A.P_d313_Col2, A.P_d314_Col1, A.P_d314_Col2, A.P_d315_Col1, A.P_d315_Col2, 
+A.P_d316_Col1, A.P_d316_Col2, A.P_d317_Col1, A.P_d317_Col2, A.P_d318_Col1, A.P_d318_Col2, A.P_d319_Col1, A.P_d319_Col2, 
+A.P_d324_Col1, A.P_d324_Col2, A.P_d325_Col1, A.P_d325_Col2, A.P_d326_Col1, A.P_d326_Col2, A.P_d327_Col1, A.P_d327_Col2, 
+A.P_d333_Col1, A.P_d333_Col2, A.P_d334_Col1, A.P_d334_Col2, A.P_d341_Col1, A.P_d341_Col2, A.P_d342_Col1, A.P_d342_Col2, 
+A.P_d343_Col1, A.P_d343_Col2, A.P_d344_Col1, A.P_d344_Col2, A.P_d345_Col1, A.P_d345_Col2, A.P_d378_Col1, A.P_d378_Col2, 
+A.P_d392_Col1, A.P_d392_Col2, A.P_d395_Col1, A.P_d395_Col2, A.P_d396_Col1, A.P_d396_Col2, A.P_d400_Col1, A.P_d400_Col2, 
+A.P_d402_Col1, A.P_d402_Col2, A.P_d426_Col1, A.P_d426_Col2, A.P_d427_Col1, A.P_d427_Col2, A.P_d428_Col1, A.P_d428_Col2, 
+A.P_d447_Col1, A.P_d447_Col2, A.P_d448_Col1, A.P_d448_Col2, A.P_d448_Col3, A.P_d449_Col1, A.P_d449_Col2, A.P_d451_Col1, 
+A.P_d451_Col2, A.P_d451_Col3, A.P_d451_Col4, A.P_d451_Col5, A.P_d458_Col1, A.P_d458_Col2, A.P_d461_Col1, A.P_d461_Col2, 
+A.P_d462_Col1, A.P_d462_Col2, A.P_d463_Col1, A.P_d463_Col2, A.P_d464_Col1, A.P_d464_Col2, A.P_d469_Col1, A.P_d469_Col2, 
+A.P_d470_Col1, A.P_d470_Col2, A.P_d471_Col1, A.P_d471_Col2, A.P_d472_Col1, A.P_d472_Col2, A.P_d473_Col1, A.P_d473_Col2, 
+A.P_d474_Col1, A.P_d474_Col2, A.P_d475_Col1, A.P_d475_Col2, A.P_d476_Col1, A.P_d476_Col2, A.P_d477_Col1, A.P_d477_Col2, 
+A.P_d483_Col1, A.P_d483_Col2, A.P_d484_Col1, A.P_d484_Col2, A.P_d486_Col1, A.P_d486_Col2, A.P_d487_Col1, A.P_d487_Col2, 
+A.P_d512_Col1, A.P_d512_Col2, A.P_d513_Col1, A.P_d513_Col2, A.P_d521_Col1, A.P_d521_Col2, A.P_d522_Col1, A.P_d522_Col2, 
+A.P_d523_Col1, A.P_d523_Col2, A.P_d525_Col1, A.P_d525_Col2, A.P_d526_Col1, A.P_d526_Col2, A.P_d527_Col1, A.P_d527_Col2, 
+A.KeyCol_deel, B.CL_N, B.LN_PR, B.BEW_VN, B.DCH_N, B.DL_N_LEI, B.DL_N_BRI, B.DL_N_LEU, B.DL_N_BRU, B.DCH_N_VR, B.A_DCH, B.BR, B.DI, 
+B.LE, B.G, B.KNT_BB, B.AUST_FER, B.K_NM_ATP, B.K_ATP, B.WRK_N, B.G_IN, B.K_AFW, B.KeyCol
+          from OUSASLIB.SKP1WALSPLUSKEYS_PREP_ALL A left outer join OUSASLIB.MATM2 B on A.KeyCol = B.KeyCol
+      order by A.KeyCol_deel asc;
+
+
+NOTE: SQL execution methods chosen are:
+
+      sqxcrta
+          sqxsort
+              sqxjm
+                  sqxsort
+                      sqxsrc( OUSASLIB.MATM2(alias = B) )
+                  sqxsort
+                      sqxsrc( OUSASLIB.SKP1WALSPLUSKEYS_PREP_ALL(alias = A) )
+WARNING: Variable KeyCol already exists on file OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: Table OUSASLIB.SKP1WALSPLUSKEYS created, with 23693 rows and 1185 columns.
+
+NOTE: SQL Statement used (Total process time):
+      real time           4.44 seconds
+      cpu time            2.84 seconds
+      
+49         quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+50         
+51         /* Let's check ... */
+52         data _null_;
+53         	retain n 0;
+54         	set &inputdsn. end=last;
+55         	if upcase(ln_pr) ne "SKP1" then
+6                                                          The SAS System                            17:10 Thursday, August 18, 2016
+
+56         		do;
+57         			put ln_pr=;
+58         			n+1;
+59         		end;
+60         	if last then put n=;
+61         run;
+
+n=0
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS.
+NOTE: DATA statement used (Total process time):
+      real time           0.17 seconds
+      cpu time            0.18 seconds
+      
+
+62         
+63         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           6.24 seconds
+      cpu time            4.65 seconds
+      

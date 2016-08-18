@@ -1,0 +1,81 @@
+1                                                          The SAS System                            15:06 Thursday, August 18, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+2          
+3          %let inputdsn=ousaslib.skp1walsplusKeys;
+4          *%let inputdsn=ousaslib.crm3allplusKeys;
+5          
+6          /* First make sure that the data sets have the same number of Obs */
+7          
+8          data &inputdsn.;
+9          	merge 	&inputdsn._PREP_BINARY
+10         			&inputdsn._PREP_NOMINAL
+11         			&inputdsn._PREP_SUMM
+12         			&inputdsn._PREP_TSDR;
+13         	by Keycol;
+14         run;
+2                                                          The SAS System                            15:06 Thursday, August 18, 2016
+
+
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_BINARY.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_NOMINAL.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_SUMM.
+NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TSDR.
+NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS has 23693 observations and 1162 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.36 seconds
+      cpu time            0.81 seconds
+      
+
+15         
+16         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           1.39 seconds
+      cpu time            0.84 seconds
+      
