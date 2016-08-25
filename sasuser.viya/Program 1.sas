@@ -6,14 +6,19 @@ libname ousaslib "/tmp/v94/";
 <<<<<<< HEAD
 proc print data=ousaslib.crm3allplusKeys_PREP_INTERVAL(obs=1000); run;
 
-proc contents data=ousaslib.CRM3allplusKeys_ORIG; run;
+proc print data=insaslib.skp1_sigdef; run;
 
 data ousaslib.skp1small_PREP_ALL;
 	set &inputdsn._PREP_ALL(obs=100);
 run;
 
-data stront;
+proc contents data=ousaslib.skp1pluscrm3pluskeys; run;
+
+data ousaslib.skp1pluscrm3pluskeys_TARG_NZ;
+	set ousaslib.skp1pluscrm3pluskeys(keep=KeyCol_deel norm_dd_x where=(norm_dd_x ne 0));
 run;
+
+proc print data=ousaslib.skp1pluscrm3pluskeys(keep=KeyCol KeyCol_deel obs=10); run;
 
 data work.tmp;
 	input KeyCol x;

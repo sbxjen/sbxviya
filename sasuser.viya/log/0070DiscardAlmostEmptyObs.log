@@ -1,4 +1,4 @@
-1                                                          The SAS System                            15:06 Thursday, August 18, 2016
+1                                                          The SAS System                             11:37 Tuesday, August 23, 2016
 
 NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
 NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
@@ -46,36 +46,51 @@ NOTE: Libref OUSASLIB was successfully assigned as follows:
       Engine:        V9 
       Physical Name: /tmp/v94
 2          
-3          %let inputdsn=ousaslib.skp1walsplusKeys;
-4          *%let inputdsn=ousaslib.crm3allplusKeys;
-5          
-6          /* First make sure that the data sets have the same number of Obs */
-7          
-8          data &inputdsn.;
-9          	merge 	&inputdsn._PREP_BINARY
-10         			&inputdsn._PREP_NOMINAL
-11         			&inputdsn._PREP_SUMM
-12         			&inputdsn._PREP_TSDR;
-13         	by Keycol;
-14         run;
-2                                                          The SAS System                            15:06 Thursday, August 18, 2016
+3          %let inputdswemptyobs=ousaslib.skp1pluscrm3plusKeys;
+4          
+5          data _null_;
+6          	dsid = open("&inputdswemptyobs.");
+7          	_nVars = attrn(dsid,"NVARS");
+8          	call symputx("nVars", _nVars);
+9          run;
 
-
-NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_BINARY.
-NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_NOMINAL.
-NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_SUMM.
-NOTE: There were 23693 observations read from the data set OUSASLIB.SKP1WALSPLUSKEYS_PREP_TSDR.
-NOTE: The data set OUSASLIB.SKP1WALSPLUSKEYS has 23693 observations and 1162 variables.
 NOTE: DATA statement used (Total process time):
-      real time           1.36 seconds
-      cpu time            0.81 seconds
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+2                                                          The SAS System                             11:37 Tuesday, August 23, 2016
+
+
+10         
+11         %put &=nVars.;
+NVARS=1593
+12         
+13         data &inputdswemptyobs.;
+14         	set &inputdswemptyobs.;
+15         	array _n _numeric_   _dumn;
+16         	array _c _character_ _dumc;
+17         	nMissing = 0;
+18         	do i = 1 to dim(_n) - 1;       /* -1 because of dummy _dumn */
+19             	if missing(_n{i}) then nMissing+1;
+20             end;
+21         	do i = 1 to dim(_c) - 1;       /* -1 because of dummy _dumc */
+22             	if missing(_c{i}) then nMissing+1;
+23             end;
+24             if (nMissing > .75 * &nVars.) then delete;
+25         run;
+
+NOTE: There were 20607 observations read from the data set OUSASLIB.SKP1PLUSCRM3PLUSKEYS.
+NOTE: The data set OUSASLIB.SKP1PLUSCRM3PLUSKEYS has 20606 observations and 1597 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.35 seconds
+      cpu time            1.35 seconds
       
 
-15         
-16         /* end of program */
+26         
+27         /* end of program */
 
 NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
 NOTE: The SAS System used:
       real time           1.39 seconds
-      cpu time            0.84 seconds
+      cpu time            1.39 seconds
       

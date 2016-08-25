@@ -1,0 +1,107 @@
+1                                                          The SAS System                             11:59 Tuesday, August 23, 2016
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M3 MBCS3170) 
+      Licensed to Van der Vorst Arnaud-E33271, Site 70068118.
+NOTE: This session is executing on the Linux 3.10.0-327.22.2.el7.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 14.1
+      SAS/ETS 14.1
+      SAS/OR 14.1
+      SAS/IML 14.1
+      SAS/QC 14.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 3.10.0-327.22.2.el7.x86_64 #1 SMP Thu Jun 23 17:05:11 UTC 2016 x86_64 CentOS Linux release 7.2.1511 (Core)  
+
+You are running SAS 9. Some SAS 8 files will be automatically converted 
+by the V9 engine; others are incompatible.  Please see 
+http://support.sas.com/rnd/migration/planning/platform/64bit.html
+
+PROC MIGRATE will preserve current SAS file attributes and is 
+recommended for converting all your SAS libraries from any 
+SAS 8 release to SAS 9.  For details and examples, please see
+http://support.sas.com/rnd/migration/index.html
+
+
+This message is contained in the SAS news file, and is presented upon
+initialization.  Edit the file "news" in the "misc/base" directory to
+display site-specific news and information in the program log.
+The command line option "-nonews" will prevent this display.
+
+
+
+
+NOTE: SAS initialization used:
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+1          libname ousaslib "/tmp/v94/";
+NOTE: Libref OUSASLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /tmp/v94
+2          
+3          %let inputdswemptycols=ousaslib.skp1pluscrm3plusKeys;
+4          
+5          data _null_;
+6          	set &inputdswemptycols. end=last;
+7          	array _n _numeric_   _dumn;
+8          	array _c _character_ _dumc;
+9          	array _nn{3000} _temporary_ (3000*0); /*  temporary array: array elements are retained automatically */
+10         	array _nc{3000} _temporary_ (3000*0); /*  temporary array: array elements are retained automatically */
+11         	do i = 1 to dim(_n)-1;       /* -1 because of dummy _dumn */
+12             	if missing(_n{i}) then _nn{i} = _nn{i}+1;
+13             end;
+14         	do i = 1 to dim(_c)-1;       /* -1 because of dummy _dumc */
+2                                                          The SAS System                             11:59 Tuesday, August 23, 2016
+
+15             	if missing(_c{i}) then _nc{i} = _nc{i}+1;
+16             end;
+17         	length _vars $6000;
+18         	if last then do;
+19         	    do i = 1 to dim(_n)-1;
+20         	        if (_nn{i}/_n_ > .85) then _vars = catx(" ", _vars, vname(_n{i}));
+21         	    end;
+22         	    do i = 1 to dim(_c)-1;
+23         	        if (_nc{i}/_n_ > .85) then _vars = catx(" ", _vars, vname(_c{i}));
+24         	    end;
+25         	    call symputx("droplist", _vars);
+26             end;
+27         run;
+
+NOTE: There were 20606 observations read from the data set OUSASLIB.SKP1PLUSCRM3PLUSKEYS.
+NOTE: DATA statement used (Total process time):
+      real time           0.95 seconds
+      cpu time            0.96 seconds
+      
+
+28         
+29         %put &=droplist.;
+DROPLIST=SKP1_d571 SKP1_d572 SKP1_d573 SKP1_d574 SKP1_d575 CRM3_d389 CRM3_d390 _dumn tSlijpOpmerking bSlijpOpmerking _dumc
+30         
+31         data &inputdswemptycols.;
+32         	_dummy = 0; /* In case the drop list is empty */
+33         	set &inputdswemptycols.;
+34         	drop &droplist _dummy;
+35         run;
+
+NOTE: There were 20606 observations read from the data set OUSASLIB.SKP1PLUSCRM3PLUSKEYS.
+NOTE: The data set OUSASLIB.SKP1PLUSCRM3PLUSKEYS has 20606 observations and 1586 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.56 seconds
+      cpu time            0.56 seconds
+      
+
+36         
+37         /* end of program */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           1.54 seconds
+      cpu time            1.54 seconds
+      

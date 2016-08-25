@@ -1,7 +1,7 @@
 libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 
-options mprint source2;
+options mprint; *source2;
 
 filename sascode temp;
 
@@ -25,7 +25,7 @@ PUT 'proc sort 	data=ousaslib.CRM3allplusKeys(where=(cl_n=put( ' _cl_n ', 8.) an
 PUT '			out=possiblyOnlyForThisCoil;';
 PUT '	by descending bew_vn descending dch_n;';
 PUT 'run;';
-PUT 'data onlyForThisCoil(drop=	cl_n bew_vn dch_n dch_n_vr';
+PUT 'data onlyForThisCoil(drop=	cl_n dch_n dch_n_vr';
 PUT '							a_dch dl_n_lei dl_n_leu dl_n_bri dl_n_bru';
 PUT '							ln_pr';
 PUT	'							_dch_n_vr0 _bew_vn0);';
@@ -47,6 +47,12 @@ PUT '			end;';
 PUT '		set possiblyOnlyForThisCoil(firstobs=2);';
 PUT '	end;'; 
 PUT 'run;';
+PUT 'proc sort data=onlyForThisCoil;';
+PUT '	by descending bew_vn;';
+PUT 'run;';
+PUT 'data onlyForThisCoil;';
+PUT '	set onlyForThisCoil(obs=1 drop=bew_vn);';
+PUT 'run;';
 PUT 'proc sql;';
 PUT '	create table SKP1plusCRM3oneCoilplusKeys as';
 PUT '    	select onlyThisCoil.*, onlyForThisCoil.*';
@@ -60,8 +66,6 @@ PUT 'delete onlyThisCoil onlyForThisCoil SKP1plusCRM3oneCoilplusKeys / memtype=d
 PUT 'run;';
 PUT 'quit;';
 run;
-
-proc contents data=work.SKP1plusCRM3oneCoilplusKeys;
 
 %include sascode;
 
