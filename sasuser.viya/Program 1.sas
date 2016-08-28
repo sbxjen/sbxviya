@@ -15,7 +15,7 @@ proc print data=ousaslib.skp1pluscrm3pluskeys(keep=KeyCol_deel norm_dd_x where=(
 
 *0.12143;
 
-proc print data=insaslib.skp1_sigdef; run;
+proc print data=insaslib.crm3_sigdef; run;
 
 data ousaslib.skp1small_PREP_ALL;
 	set &inputdsn._PREP_ALL(obs=100);
