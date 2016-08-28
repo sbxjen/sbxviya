@@ -2,12 +2,12 @@ options cashost="sbxintern16.sbx.sas.com" casport=5570 casuser="sasuser";
 cas mysess sessopts=(caslib="casuser") uuidmac=uuid;
 libname mycas cas caslib="casuser";
 
-%put &uuid.;
+%put &=uuid.;
 
 libname mysas "&USERDIR.";
 
 proc casutil incaslib="casuser";
-	list tables;
+	list tables incaslib="casuser";
 run;
 
 proc contents data=mycas.mnist_train; run;
@@ -15,7 +15,12 @@ proc contents data=mycas.mnist_train; run;
 proc mdsummary data=mycas.mnist_train;
 	output out=mycas.mnist_train_std_;
 run;
-proc print data=mycas.mnist_train_std_; run;
+
+data mycas.mnist_train; 
+	set mycas.mnist_train;
+	put 'Hello from ' _hostname_;
+run;
+
 data mycas.mnist_train_std_;
 	length _vars $4000; /* 5*785 */
 	retain _vars;
@@ -32,7 +37,7 @@ proc nnet data=mycas.mnist_train standardize=std;
 	target d784 / level=nom comb=linear act=softmax error=entropy;
 	input &vars. / level=int;
 	architecture MLP;
-	hidden 75;
+	hidden 75 / act=tanh;
 	train outmodel=mycas.nnetModel seed=23451 validation=mycas.mnist_validation;
 	optimization algorithm=lbfgs maxiters=250 RegL1=0.001 RegL2=0.001;
 	code file="&USERDIR./nnetModel.sas";
@@ -68,6 +73,8 @@ run;*/
 
 %let height=28;
 %let width=28;
+
+proc print data=mycas.mnist_train(obs=1); run;
 
 data work.mnist;
 	set mycas.mnist(firstobs=1 obs=1);
