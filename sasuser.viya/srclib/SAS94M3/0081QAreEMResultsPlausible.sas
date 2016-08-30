@@ -1,26 +1,26 @@
 libname mysas "/sastest/EMProjects/Aperam/DataSources";
 
-proc contents data=mysas.POST_TRAIN; run;
+proc contents data=mysas.POST_GEN_TRAIN; run;
 
-proc means data=mysas.POST_VALIDATE;
+proc means data=mysas.POST_GEN_VALIDATE;
 	var STD_REP_IMP_CRM3_P_d251_Col1;
 run;
 
-proc means data=mysas.POST_TRAIN;
+proc means data=mysas.POST_GEN_TRAIN;
 	var norm_dd_x ;
 run;
 
-proc univariate data=mysas.POST_TRAIN(where=(norm_dd_x ne 0)) noprint;
+proc univariate data=mysas.POST_GEN_TRAIN(where=(norm_dd_x ne 0)) noprint;
 	histogram norm_dd_x / gamma(theta=0);
 run;
 
-proc freq data=mysas.POST_TRAIN;
+proc freq data=mysas.POST_GEN_TRAIN;
 	tables IMP_bBolvorm TG_SKP1_d421;
 run;
 
 ods graphics / reset imagemap;
-proc sgplot data=MYSAS.POST_TRAIN;
-	vbar TG_SKP1_d421 / response=norm_dd_x stat=Mean name='Bar';
+proc sgplot data=MYSAS.POST_GEN_TRAIN;
+	vbox norm_dd_x / category=SKP1_d491;
 	yaxis grid;
 ods graphics / reset;
 
