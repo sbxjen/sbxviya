@@ -6,7 +6,7 @@ libname ousaslib "/tmp/v94/";
 <<<<<<< HEAD
 proc print data=ousaslib.crm3allplusKeys_PREP_INTERVAL(obs=1000); run;
 
-data ousaslib.skp1walsplusKeys_TARGET(keep=KeyCol ts_registratie d524 d324 d512 d513 d421);
+data ousaslib.skp1walsplusKeys_TARGET(keep=KeyCol ts_registratie d524 d324 d512 d513 d421 d012-d024 d063 d065 d075 d160);
 	set ousaslib.skp1walsplusKeys_ORIG;
 	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
 run;
@@ -15,7 +15,7 @@ proc print data=ousaslib.skp1pluscrm3pluskeys(keep=KeyCol_deel norm_dd_x where=(
 
 *0.12143;
 
-proc print data=insaslib.crm3_sigdef; run;
+proc print data=insaslib.skp1_sigdef; run;
 
 data ousaslib.skp1small_PREP_ALL;
 	set &inputdsn._PREP_ALL(obs=100);

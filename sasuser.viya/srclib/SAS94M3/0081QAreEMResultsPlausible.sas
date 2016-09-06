@@ -2,6 +2,8 @@ libname mysas "/sastest/EMProjects/Aperam/DataSources";
 
 proc contents data=mysas.POST_GEN_TRAIN; run;
 
+proc print data=mysas.POST_LOG_TRAIN(obs=2); run;
+
 proc means data=mysas.POST_GEN_VALIDATE;
 	var STD_REP_IMP_CRM3_P_d251_Col1;
 run;
