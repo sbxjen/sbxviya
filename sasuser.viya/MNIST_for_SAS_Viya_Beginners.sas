@@ -1,5 +1,5 @@
-options cashost="sbxintern16.sbx.sas.com" casport=5570 casuser="sasuser";
-cas mysess sessopts=(caslib="casuser" nworkers=0) uuidmac=uuid;
+options cashost="rdcgrd001.unx.sas.com" casport=47884 casuser="europe\sbxjen";
+cas mysess sessopts=(caslib="casuser") uuidmac=uuid;
 libname mycas cas caslib="casuser";
 
 %put &=uuid.;
@@ -8,13 +8,6 @@ proc casutil incaslib="casuser";
 	list files;
 	list tables;
 run;
-
-/* Download MNIST_TRAIN dataset from CAS library to SAS 9.4. */
-libname mysas "/tmp";
-proc download data=mycas.mnist_train out=mysas.mnist_train;
-run;
-
-
 
 /*  I give you some fun code to plot this 2D image with the SGPLOT Procedure in SAS Studio. */
 %let height=28;
