@@ -1,4 +1,4 @@
-options cashost="sbxintern16.sbx.sas.com" casport=5570;
+options cashost="sbxintern16.sbx.sas.com" casport=5570 casuser="sasuser";
 cas mysess;
 
 caslib aperam datasource=(srctype="path") sessref=mysess path="/sastest/EMProjects/Aperam/DataSources/";
@@ -6,52 +6,80 @@ caslib aperam datasource=(srctype="path") sessref=mysess path="/sastest/EMProjec
 /* Reference the CAS library */
 libname mycas cas caslib="aperam";
 
+/* List files available in caslib */
 proc casutil incaslib="aperam";
 	list files;
 run;
 
+%let casdata=post_gen_train;
 proc casutil outcaslib="aperam";
-	load casdata="post_train.sas7bdat" casout="post_train";
+	load casdata="&casdata..sas7bdat" casout="&casdata.";
+run;
+data mycas.&casdata.;
+	set mycas.&casdata.;
+	V = 0;
 run;
 
+proc mdsummary data=mycas.&casdata.;
+	var STD_REP_IMP_CRM3_P_d251_Col1;
+	output out=mycas._&casdata._mdsummary;
+run;
+
+%let casdata=post_gen_validate;
+proc casutil outcaslib="aperam";
+	load casdata="&casdata..sas7bdat" casout="&casdata.";
+run;
+data mycas.&casdata.;
+	set mycas.&casdata.;
+	V = 1;
+run;
+
+/* Concatenate for ROLE=variable (<TEST='value'> <TRAIN='value'> <VALIDATE='value'>) */
+%let casdata=post_gen;
+data mycas.&casdata.;
+	set mycas.&casdata._train mycas.&casdata._validate;
+run;
+
+proc contents data=mycas.&casdata.; run;
+
 %let class=AUST_FER IMP_KNT_BB IMP_bBolvorm IMP_bProgrammaNaam IMP_tComponentName 
-		TG_CRM3_d002 TG_CRM3_d066 TG_CRM3_d069 TG_CRM3_d079 TG_CRM3_d083 TG_CRM3_d084 
-		TG_CRM3_d085 TG_CRM3_d086 TG_CRM3_d087 TG_CRM3_d088 TG_CRM3_d089 TG_CRM3_d090 
-		TG_CRM3_d091 TG_CRM3_d092 TG_CRM3_d093 TG_CRM3_d094 TG_CRM3_d095 TG_CRM3_d096 
-		TG_CRM3_d097 TG_CRM3_d098 TG_CRM3_d099 TG_CRM3_d109 TG_CRM3_d110 TG_CRM3_d111 
+		TG_CRM3_d002 TG_CRM3_d066 TG_CRM3_d069 TG_CRM3_d079 CRM3_d083 CRM3_d084 
+		CRM3_d085 TG_CRM3_d086 TG_CRM3_d087 CRM3_d088 CRM3_d089 CRM3_d090 
+		CRM3_d091 CRM3_d092 CRM3_d093 TG_CRM3_d094 CRM3_d095 TG_CRM3_d096 
+		TG_CRM3_d097 CRM3_d098 CRM3_d099 CRM3_d109 CRM3_d110 TG_CRM3_d111 
 		TG_CRM3_d117 TG_CRM3_d138 TG_CRM3_d140 TG_CRM3_d141 TG_CRM3_d195 TG_CRM3_d197 
-		TG_CRM3_d198 TG_CRM3_d200 TG_CRM3_d202 TG_CRM3_d214 TG_CRM3_d216 TG_CRM3_d230 
+		TG_CRM3_d198 TG_CRM3_d200 TG_CRM3_d202 CRM3_d214 TG_CRM3_d216 TG_CRM3_d230 
 		TG_CRM3_d231 TG_CRM3_d232 TG_CRM3_d233 TG_CRM3_d234 TG_CRM3_d235 TG_CRM3_d236 
 		TG_CRM3_d237 TG_CRM3_d240 TG_CRM3_d243 TG_CRM3_d253 TG_CRM3_d257 TG_CRM3_d258 
 		TG_CRM3_d259 TG_CRM3_d260 TG_CRM3_d268 TG_CRM3_d281 TG_CRM3_d288 TG_CRM3_d297 
 		TG_CRM3_d298 TG_CRM3_d299 TG_CRM3_d300 TG_CRM3_d307 TG_CRM3_d310 TG_CRM3_d316 
 		TG_CRM3_d320 TG_CRM3_d322 TG_CRM3_d326 TG_CRM3_d331 TG_CRM3_d353 TG_CRM3_d357 
 		TG_IMP_SKP1_P_d171_Stddev TG_IMP_SKP1_P_d176_Stddev TG_IMP_bCodeSlijpReden 
-		TG_IMP_bComponentDigits TG_IMP_bComponentId TG_IMP_bComponentName 
-		TG_IMP_bHardheid TG_IMP_bWerkNummerAfname TG_IMP_bWerkNummerSlijp 
-		TG_IMP_tCodeSlijpReden TG_IMP_tHardheid TG_IMP_tProgrammaNaam 
-		TG_IMP_tWerkNummerAfname TG_IMP_tWerkNummerSlijp TG_K_AFW TG_K_ATP 
-		TG_K_NM_ATP TG_K_TSTMAT TG_SKP1_d001 TG_SKP1_d002 TG_SKP1_d040 TG_SKP1_d049 
-		TG_SKP1_d081 TG_SKP1_d086 TG_SKP1_d131 TG_SKP1_d136 TG_SKP1_d137 TG_SKP1_d140 
-		TG_SKP1_d146 TG_SKP1_d180 TG_SKP1_d182 TG_SKP1_d186 TG_SKP1_d193 TG_SKP1_d195 
-		TG_SKP1_d196 TG_SKP1_d197 TG_SKP1_d198 TG_SKP1_d199 TG_SKP1_d201 TG_SKP1_d202 
+		IMP_bComponentDigits IMP_bComponentId IMP_bComponentName 
+		TG_IMP_bHardheid IMP_bWerkNummerAfname IMP_bWerkNummerSlijp 
+		IMP_tCodeSlijpReden TG_IMP_tHardheid IMP_tProgrammaNaam 
+		IMP_tWerkNummerAfname IMP_tWerkNummerSlijp K_AFW TG_K_ATP 
+		TG_K_NM_ATP K_TSTMAT TG_SKP1_d001 TG_SKP1_d002 TG_SKP1_d040 TG_SKP1_d049 
+		SKP1_d081 SKP1_d086 TG_SKP1_d131 TG_SKP1_d136 TG_SKP1_d137 TG_SKP1_d140 
+		SKP1_d146 TG_SKP1_d180 TG_SKP1_d182 SKP1_d186 TG_SKP1_d193 SKP1_d195 
+		TG_SKP1_d196 TG_SKP1_d197 TG_SKP1_d198 SKP1_d199 TG_SKP1_d201 TG_SKP1_d202 
 		TG_SKP1_d203 TG_SKP1_d204 TG_SKP1_d206 TG_SKP1_d208 TG_SKP1_d209 TG_SKP1_d210 
-		TG_SKP1_d211 TG_SKP1_d212 TG_SKP1_d213 TG_SKP1_d217 TG_SKP1_d218 TG_SKP1_d219 
-		TG_SKP1_d228 TG_SKP1_d229 TG_SKP1_d230 TG_SKP1_d296 TG_SKP1_d338 TG_SKP1_d346 
-		TG_SKP1_d354 TG_SKP1_d355 TG_SKP1_d357 TG_SKP1_d358 TG_SKP1_d372 TG_SKP1_d377 
-		TG_SKP1_d387 TG_SKP1_d403 TG_SKP1_d404 TG_SKP1_d405 TG_SKP1_d407 TG_SKP1_d415 
-		TG_SKP1_d421 TG_SKP1_d424 TG_SKP1_d425 TG_SKP1_d452 TG_SKP1_d456 TG_SKP1_d468 
-		TG_SKP1_d480 TG_SKP1_d482 TG_SKP1_d488 TG_SKP1_d491 TG_SKP1_d492 TG_SKP1_d493 
-		TG_SKP1_d494 TG_SKP1_d496 TG_SKP1_d497 TG_SKP1_d498 TG_WRK_N;
-		
-%let int=SKP1_d185 SKP1_d190 SKP1_d200 SKP1_d205 SKP1_d207 
+		TG_SKP1_d211 TG_SKP1_d212 SKP1_d213 TG_SKP1_d217 SKP1_d218 SKP1_d219 
+		TG_SKP1_d228 TG_SKP1_d229 TG_SKP1_d230 TG_SKP1_d296 SKP1_d338 TG_SKP1_d346 
+		TG_SKP1_d354 TG_SKP1_d355 TG_SKP1_d357 TG_SKP1_d358 TG_SKP1_d372 SKP1_d377 
+		SKP1_d387 TG_SKP1_d403 TG_SKP1_d404 TG_SKP1_d405 TG_SKP1_d407 SKP1_d415 
+		TG_SKP1_d421 SKP1_d424 TG_SKP1_d425 TG_SKP1_d452 TG_SKP1_d456 TG_SKP1_d468 
+		TG_SKP1_d480 TG_SKP1_d482 TG_SKP1_d488 SKP1_d491 TG_SKP1_d492 TG_SKP1_d493 
+		TG_SKP1_d494 TG_SKP1_d496 TG_SKP1_d497 TG_SKP1_d498 TG_WRK_N SKP1_d185 SKP1_d190 SKP1_d200 SKP1_d205 SKP1_d207 
 		SKP1_d363 SKP1_d376 SKP1_d390 SKP1_d434 SKP1_d481 SKP1_d485 SKP1_d500 
-		SKP1_d502 SKP1_d276 SKP1_d278 SKP1_d367 SKP1_d370 SKP1_d373 SKP1_d375 
-		SKP1_d388 SKP1_d397 SKP1_d417 SKP1_d418 SKP1_d423 SKP1_d466 CRM3_d073 
+		SKP1_d502 SKP1_d276 SKP1_d278 SKP1_d367 SKP1_d370 TG_SKP1_d373 SKP1_d375 
+		SKP1_d388 TG_SKP1_d397 SKP1_d417 SKP1_d418 SKP1_d423 SKP1_d466 CRM3_d073 
 		CRM3_d255 CRM3_d196 CRM3_d213 CRM3_d217 CRM3_d245 IMP_CRM3_d383 IMP_CRM3_d386 
 		IMP_CRM3_d387 IMP_bLagersTappenOK IMP_bOKVoorWals IMP_bRuwheid IMP_bSlag 
 		IMP_tComponentDigits IMP_tComponentId IMP_tFlagMSMQQE IMP_tOKVoorWals 
-		IMP_tRuwheid STD_REP_BR STD_REP_CRM3_d001 STD_REP_CRM3_d004 STD_REP_CRM3_d005 
+		IMP_tRuwheid;
+		
+%let int=STD_REP_BR STD_REP_CRM3_d001 STD_REP_CRM3_d004 STD_REP_CRM3_d005 
 		STD_REP_CRM3_d006 STD_REP_CRM3_d007 STD_REP_CRM3_d008 STD_REP_CRM3_d009 
 		STD_REP_CRM3_d010 STD_REP_CRM3_d011 STD_REP_CRM3_d012 STD_REP_CRM3_d013 
 		STD_REP_CRM3_d014 STD_REP_CRM3_d015 STD_REP_CRM3_d016 STD_REP_CRM3_d017 
@@ -259,8 +287,7 @@ run;
 		STD_REP_IMP_SKP1_P_d486_Col2 STD_REP_IMP_SKP1_P_d486_Mean 
 		STD_REP_IMP_SKP1_P_d486_Stddev STD_REP_IMP_SKP1_P_d487_Col1 
 		STD_REP_IMP_SKP1_P_d487_Col2 STD_REP_IMP_SKP1_P_d487_Mean 
-		STD_REP_IMP_SKP1_P_d487_Stddev STD_REP_IMP_SKP1_P_d512_Stddev 
-		STD_REP_IMP_SKP1_P_d513_Stddev STD_REP_IMP_SKP1_P_d521_Col1 
+		STD_REP_IMP_SKP1_P_d487_Stddev STD_REP_IMP_SKP1_P_d521_Col1 
 		STD_REP_IMP_SKP1_P_d521_Col2 STD_REP_IMP_SKP1_P_d521_Mean 
 		STD_REP_IMP_SKP1_P_d521_Stddev STD_REP_IMP_bAfname 
 		STD_REP_IMP_bCilinderDiameterEin STD_REP_IMP_bHistoryId STD_REP_IMP_bPause 
@@ -280,7 +307,7 @@ run;
 		STD_REP_SKP1_P_d018_Col1 STD_REP_SKP1_P_d018_Col2 STD_REP_SKP1_P_d018_Mean 
 		STD_REP_SKP1_P_d018_Stddev STD_REP_SKP1_P_d019_Col1 STD_REP_SKP1_P_d019_Col2 
 		STD_REP_SKP1_P_d019_Mean STD_REP_SKP1_P_d019_Stddev STD_REP_SKP1_P_d020_Col1 
-		STD_REP_SKP1_P_d020_Col2 STD_REP_SKP1_P_d020_Mean STD_REP_SKP1_P_d020_Stddev 
+		STD_REP_SKP1_P_d020_Col2 STD_REP_SKP1_P_d020_Mean STD_REP_IMP_SKP1_P_d020_Stddev 
 		STD_REP_SKP1_P_d021_Col1 STD_REP_SKP1_P_d021_Col2 STD_REP_SKP1_P_d021_Mean 
 		STD_REP_SKP1_P_d021_Stddev STD_REP_SKP1_P_d022_Col1 STD_REP_SKP1_P_d022_Col2 
 		STD_REP_SKP1_P_d022_Mean STD_REP_SKP1_P_d023_Col1 STD_REP_SKP1_P_d023_Col2 
@@ -444,9 +471,7 @@ run;
 		STD_REP_SKP1_P_d469_Mean STD_REP_SKP1_P_d469_Stddev STD_REP_SKP1_P_d475_Col1 
 		STD_REP_SKP1_P_d475_Col2 STD_REP_SKP1_P_d475_Mean STD_REP_SKP1_P_d475_Stddev 
 		STD_REP_SKP1_P_d476_Col1 STD_REP_SKP1_P_d476_Col2 STD_REP_SKP1_P_d476_Mean 
-		STD_REP_SKP1_P_d477_Col1 STD_REP_SKP1_P_d477_Col2 STD_REP_SKP1_P_d477_Mean 
-		STD_REP_SKP1_P_d512_Col1 STD_REP_SKP1_P_d512_Col2 STD_REP_SKP1_P_d512_Mean 
-		STD_REP_SKP1_P_d513_Col1 STD_REP_SKP1_P_d513_Col2 STD_REP_SKP1_P_d513_Mean 
+		STD_REP_SKP1_P_d477_Col1 STD_REP_SKP1_P_d477_Col2 STD_REP_SKP1_P_d477_Mean  
 		STD_REP_SKP1_P_d522_Col1 STD_REP_SKP1_P_d522_Col2 STD_REP_SKP1_P_d522_Mean 
 		STD_REP_SKP1_P_d522_Stddev STD_REP_SKP1_P_d523_Col1 STD_REP_SKP1_P_d523_Col2 
 		STD_REP_SKP1_P_d523_Mean STD_REP_SKP1_P_d523_Stddev STD_REP_SKP1_d009 
@@ -483,20 +508,7 @@ run;
 		STD_REP_SKP1_d479 STD_REP_SKP1_d489 STD_REP_SKP1_d490 STD_REP_SKP1_d495 
 		STD_REP_SKP1_d499 STD_REP_SKP1_d501 STD_REP_SKP1_d510 STD_REP_SKP1_d511 
 		STD_REP_SKP1_d519 STD_REP_SKP1_d520;
-
-/* PROC GENSELECT tends to give similar but "motivated" results. */
-*proc varreduce data=mycas.post_train(where=(norm_dd_x ne 0) ondemand=no); /* With/without WHERE gives very similar results. */
-*	class &class.;
-*	reduce supervised norm_dd_x = &int. &class. / AIC; /* AIC tends to retain more variables than BIC. */ 
-*run;
-
-/* No elastic net, and LASSO doesn't work for numerical issues I guess... */
-proc genselect data=mycas.post_train(where=(norm_dd_x ne 0)) lassorho=0.8 fconv=1e-4 gconv=1e-4 xtol=1e-4;
-	class &class.;
-	model norm_dd_x = &int. &class. / distribution=gamma link=log;
-	selection method=lasso(choose=aic);
-	*selection method=forward(choose=aic);
-	*selection method=backward(fast choose=aic);
-run;
-
-
+		*STD_REP__pol_Mean;
+		
+		*STD_REP_IMP_SKP1_P_d512_Stddev STD_REP_SKP1_P_d512_Col1 STD_REP_SKP1_P_d512_Col2 STD_REP_SKP1_P_d512_Mean 
+		*STD_REP_IMP_SKP1_P_d513_Stddev STD_REP_SKP1_P_d513_Col1 STD_REP_SKP1_P_d513_Col2 STD_REP_SKP1_P_d513_Mean;
