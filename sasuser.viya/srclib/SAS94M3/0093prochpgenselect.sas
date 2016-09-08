@@ -271,7 +271,11 @@ proc glmselect data=mysas.POST_GEN_TRAIN namelen=32;
 	*model norm_dd_x = &class. &int. / selection=forward(choose=aic);
 	model norm_dd_x = &class. &int. / selection=elasticnet(choose=aic);
 run;
-	
-proc hpgenselect data=mysas.POST_GEN_TRAIN;
-	class &class.;
-	model no
+
+
+/* No elastic net, and LASSO doesn't work for numerical issues I guess... */
+proc hpgenselect data=mysas.POST_GEN_TRAIN(where=(norm_dd_x ne 0));
+	class &class. / split;
+	model norm_dd_x = &int. &class. / distribution=gamma link=log;
+	selection method=forward(choose=aic);
+run;

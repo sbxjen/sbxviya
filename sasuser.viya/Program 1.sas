@@ -3,10 +3,49 @@ libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
 
+data mysas.post_selection;
+	set mysas.post_glm_train mysas.post_glm_validate;
+run;
+
+proc contents data=mysas.post_selection; run;
+
+proc contents data=ousaslib.post_clus_train; run;
+
+data post_clus_train(drop=GRP_STD_SKP1_P_d324_Col1);
+	set ousaslib.post_clus_train(keep=KeyCol_deel GRP_STD_SKP1_P_d324_Col1);
+	Col1 = put(GRP_STD_SKP1_P_d324_Col1,best.);
+run;
+proc sort data=post_clus_train;
+	by KeyCol_deel;
+run;
+data post_clus_train;
+	set post_clus_train;
+	by KeyCol_deel;
+	if first.KeyCol_deel;
+run;
+
+proc sql feedback stimer _method noprint;
+	create table ousaslib.skp1walsplusKeysplusClus as
+	select a.*, b.*
+ 	from post_clus_train 					a
+      	 left join ousaslib.skp1walspluskeys_target b
+ 	on a.KeyCol_deel = b.KeyCol 
+ 	order by a.KeyCol_deel;
+quit;
+
+data ousaslib.skp1walsplusKeysplusClus;
+	set ousaslib.skp1walsplusKeysplusClus;
+	Filter = catx("_", Col1, KeyCol_deel);
+run;
+
+proc sort data=ousaslib.skp1walsplusKeysplusClus;
+	by Filter;
+run;
+
 <<<<<<< HEAD
 proc print data=ousaslib.crm3allplusKeys_PREP_INTERVAL(obs=1000); run;
 
-data ousaslib.skp1walsplusKeys_TARGET(keep=KeyCol ts_registratie d524 d324 d512 d513 d421 d012-d024 d063 d065 d075 d160);
+data ousaslib.skp1walsplusKeys_TARGET(keep=KeyCol ts_registratie d524 d324 d327 d325);
 	set ousaslib.skp1walsplusKeys_ORIG;
 	KeyCol = catx("_", cl_n, put(bew_vn,best.), put(dch_n,best.), put(_deel,best.));
 run;

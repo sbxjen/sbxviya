@@ -14,7 +14,7 @@ run;
 %let width=28;
 
 data work.long;
-	array d{784};
+	array d{784} d0-d783;
 	set mycas.mnist_train(drop=d784 obs=1);
 	do i=1 to &height.;
 		y = &height.-i;
@@ -68,3 +68,16 @@ proc nnet data=mycas.mnist_train standardize=std;
 	code file="&USERDIR./nnetModel.sas";
 run;
 ods _all_ close;
+
+ods graphics on / scale=on;
+title "Iteration History";
+proc sgplot data=mysas.OptIterHistory;
+	xaxis grid type=log; yaxis grid values=(0 to 7 by 1)  display=(nolabel);
+	series x=Progress y=Loss / lineattrs=(color=gray pattern=2);
+	series x=Progress y=Objective / lineattrs=(color=blue pattern=1);
+run;
+
+/* How well does our model do? */
+proc nnet data=mycas.mnist_test inmodel=mycas.nnetModel;
+   score out=mycas.nnetOut copyvars=d784;
+run;
