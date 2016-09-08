@@ -7,7 +7,7 @@ data mysas.post_selection;
 	set mysas.post_glm_train mysas.post_glm_validate;
 run;
 
-proc contents data=mysas.post_selection; run;
+proc contents data=mysas.post_gen_validate; run;
 
 proc contents data=ousaslib.post_clus_train; run;
 

@@ -265,13 +265,6 @@ libname mysas "/sastest/EMProjects/Aperam/DataSources";
 		STD_REP_SKP1_d455 STD_REP_SKP1_d460 STD_REP_SKP1_d467 STD_REP_SKP1_d479 
 		STD_REP_SKP1_d489 STD_REP_SKP1_d490 STD_REP_SKP1_d495 STD_REP_SKP1_d499 
 		STD_REP_SKP1_d501 STD_REP_SKP1_d510;
-		
-proc glmselect data=mysas.POST_GEN_TRAIN namelen=32;
-	class &class. / split;
-	*model norm_dd_x = &class. &int. / selection=forward(choose=aic);
-	model norm_dd_x = &class. &int. / selection=elasticnet(choose=aic);
-run;
-
 
 /* No elastic net, and LASSO doesn't work for numerical issues I guess... */
 proc hpgenselect data=mysas.POST_GEN_TRAIN(where=(norm_dd_x ne 0));
