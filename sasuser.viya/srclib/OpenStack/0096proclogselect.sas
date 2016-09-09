@@ -113,6 +113,7 @@ proc contents data=mycas.post_SelectionSummary; run;
 /************************************************************************/
 /* Build a predictive model using Logistic Regression                   */
 /************************************************************************/
+ods output FitStatistics=_logselectFitStatistics;
 proc logselect data=&partitioned_data. alpha=0.05;
 	partition role=_role_(validate='validation' train='training');
 	model &target.(event='0')= &interval_inputs. / link=logit clb;
@@ -140,13 +141,13 @@ run;
 *	stop;
 *run;
 
+ods output FitStatistics=_gradboostFitStatistics;
 proc gradboost data=&extended_data. 
-		ntrees=50 maxdepth=6 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
-		outmodel=mycas._gradboost_model; *minleafsize=0.05*&N. ntrees=200;
+		ntrees=20 maxdepth=5 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
+		outmodel=mycas._gradboostModel; *minleafsize=0.05*&N. ntrees=200;
 	partition role=_role_ (validate='validation' train='training');
 	target &target. / level=nominal;
 	input &interval_inputs. / level=interval;
-	output out=mycas._gradboost_out copyvars=(KeyCol_deel &target.);
 	code file="&outdir./gradboost.sas";
 run;
 
@@ -159,6 +160,85 @@ data mycas._scored_logselect;
 	p_&target.1 = 1-p_&target.0;
 run;
 
+
+/****************************/
+/* Assess model performance */
+/****************************/
+libname BethWork "/home/sasdemo";
+
+%macro assess_model (prefix=, var_evt=, var_nevt=);
+
+proc assess data=&caslibname.._scored_&prefix.;
+ input &var_evt.;
+ target bad / level=nominal event='1';
+ fitstat pvar=&var_nevt. / pevent='0';
+ by _partind_;
+ ods output fitstat = BethWork.&prefix._fitstat
+  rocinfo = BethWork.&prefix._rocinfo
+  liftinfo = BethWork.&prefix._liftinfo;
+run;
+
+%mend assess_model;
+
+%assess_model(prefix=gradboost,var_evt=p_bad1,var_nevt=p_bad0);
+%assess_model(prefix=logselect,var_evt=p_bad, var_nevt=p_bad0);
+
+/*******************************************/
+/* Analyze model using ROC and Lift charts */
+/*******************************************/
+ods graphics on;
+proc format;
+ value partindlbl
+ 0 = 'Validation'
+ 1 = 'Training';
+run;
+
+data BethWork.all_rocinfo;
+ set
+ BethWork.logselect_rocinfo(keep=sensitivity fpr _partind_ in=l)
+ BethWork.forest_rocinfo (keep=sensitivity fpr _partind_ in=f)
+ BethWork.gradboost_rocinfo(keep=sensitivity fpr _partind_ in=g);
+
+ length model $ 16;
+ select;
+  when (l) model = 'Logistic';
+  when (f) model = 'Forest';
+  when (g) model = 'GradientBoosting';
+ end;
+run;
+
+/* Plot Validition and Training Together on a Separate ROC Graph for Each Model */
+proc sgpanel data=BethWork.all_rocinfo aspect=1;
+ panelby model / layout=columnlattice spacing=5;
+ title "ROC Curve Panel";
+ rowaxis label="True positive rate" values=(0 to 1 by 0.25) grid offsetmin=0.05 offsetmax=0.05;
+ colaxis label="False positive rate" values=(0 to 1 by 0.25) grid offsetmin=0.05 offsetmax=0.05;
+ lineparm x=0 y=0 slope=1 / transparency=0.7;
+ series x=fpr y=sensitivity /group=_partind_;
+ format _partind_ partindlbl.;
+run;
+
+/* Plot ROC Curves for All Models Together */
+proc sgpanel data=BethWork.all_ROCinfo;
+ panelby _partind_ / layout=columnlattice spacing=5;
+ title "ROC Curve Models Overlain";
+ rowaxis label="True Positive Rate";
+ colaxis label="False Positive Rate" grid;
+ lineparm x=0 y=0 slope=1 / transparency=0.7;
+ series x=fpr y=sensitivity / group=model;
+ format _partind_ partindlbl.;
+run;
+
+/* Plot ROC Curves for All Models Together With Markers */
+proc sgpanel data=BethWork.all_ROCinfo;
+ panelby _partind_ / layout=columnlattice spacing=5;
+ title "ROC Curve Models Overlain With Markers";
+ rowaxis label="True Positive Rate";
+ colaxis label="False Positive Rate" grid;
+ lineparm x=0 y=0 slope=1 / transparency=0.7;
+ series x=fpr y=sensitivity / group=model markers markerattrs=(symbol=circlefilled);
+ format _partind_ partindlbl.;
+run;
 
 /************************************************************************/
 /* Assess model performance                                             */

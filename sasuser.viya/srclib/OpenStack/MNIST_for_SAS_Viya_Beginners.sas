@@ -8,6 +8,11 @@ proc casutil incaslib="casuser";
 	list tables;
 run;
 
+%let casdata=mnist_validation;
+proc casutil outcaslib="casuser";
+	load casdata="&casdata..sashdat" casout="&casdata.";
+run;
+
 libname mysas "&USERDIR";
 
 /*  I give you some fun code to plot this 2D image with the SGPLOT Procedure in SAS Studio. */
@@ -62,10 +67,11 @@ ods output OptIterHistory=mysas.OptIterHistory;
 proc nnet data=mycas.mnist_train standardize=std;
 	target d784 / level=nom comb=linear act=softmax error=entropy;
 	input &vars. / level=int;
-	architecture GLIM;
-	*hidden 75 / act=tanh;
+	*architecture GLIM;
+	hidden 2 / act=tanh;
 	train outmodel=mycas.nnetModel seed=23451 validation=mycas.mnist_validation;
 	optimization algorithm=lbfgs maxiters=250 RegL1=0.001 RegL2=0.001;
+	score out=mycas.nnetScored;
 	code file="&USERDIR./nnetModel.sas";
 run;
 ods _all_ close;
