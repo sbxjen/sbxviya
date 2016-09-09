@@ -4,6 +4,7 @@
 /* Specify the data set names */                    
 %let casdata          = mycas.post_log_train;            
 %let partitioned_data = mycas.post_log_part; 
+%let extended_data 	  = mycas.post_log_ext;
 
 /* Specify the data set inputs and target */
 %let class_inputs    = ;
@@ -115,8 +116,10 @@ proc contents data=mycas.post_SelectionSummary; run;
 proc logselect data=&partitioned_data. alpha=0.05;
 	partition role=_role_(validate='validation' train='training');
 	model &target.(event='0')= &interval_inputs. / link=logit clb;
-	selection method=forward
+	*selection method=forward
         (select=sbc stop=sbc choose=validate) hierarchy=none;
+    selection method=lasso
+        (choose=validate) hierarchy=none; /* LASSO = IV */
 	freq _freq_;
 	code file="&outdir./logselect.sas";
 run;
@@ -124,6 +127,28 @@ run;
 /************************************************************************/
 /* Build a predictive model using Gradient Boosting                     */
 /************************************************************************/
+data &extended_data.(drop=i);
+	set &partitioned_data.;
+	do i = 1 to round(_freq_,1);
+		output;
+	end;
+run;
+
+*data _null_;
+*	if 0 then set mycas.post_gen_train nobs=N;
+*	call symput('N', strip(put(N,8.)));
+*	stop;
+*run;
+
+proc gradboost data=&extended_data. 
+		ntrees=50 maxdepth=6 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
+		outmodel=mycas._gradboost_model; *minleafsize=0.05*&N. ntrees=200;
+	partition role=_role_ (validate='validation' train='training');
+	target &target. / level=nominal;
+	input &interval_inputs. / level=interval;
+	output out=mycas._gradboost_out copyvars=(KeyCol_deel &target.);
+	code file="&outdir./gradboost.sas";
+run;
 
 /************************************************************************/
 /* Score the data using the generated model                             */

@@ -20,17 +20,16 @@ run;
 %load(tables=post_log_train post_log_validate post_log_test);
 
 proc casutil;
-	contents casdata="post_log_train";
+	contents casdata="post_log_ext";
 run;
 
 /************************************************************************/
 /* Partition the data into training and validation                      */
 /************************************************************************/
-
-data mycas.post_log_part;
+data mycas.post_log_part(drop=t v);
 	length _role_ $ 10;
 	set mycas.post_log_train(in=t) mycas.post_log_validate(in=v);
-	_freq_ = 100 * _freq_;
+	_freq_ = 10 * _freq_;
 	select;
 		when (t) _role_ = 'training';
 		when (v) _role_ = 'validation';
