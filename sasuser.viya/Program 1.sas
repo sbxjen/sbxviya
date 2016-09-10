@@ -3,11 +3,20 @@ libname insaslib "/tmp/viya/" access=readonly;
 libname ousaslib "/tmp/v94/";
 *;
 
+proc univariate data=work.full;
+	var PP_d324;
+run;
+
 data mysas.post_selection;
 	set mysas.post_glm_train mysas.post_glm_validate;
 run;
 
-proc contents data=mysas.post_gen_validate; run;
+proc contents data=EMPro.post_glm_train; run;
+
+data tmp.skp1walsplusKeysforGRP;
+	set tmp.skp1walsplusKeysforGRP(rename=KeyCol_deel=KeyCol);
+run;
+
 
 proc contents data=ousaslib.post_clus_train; run;
 
