@@ -1,10 +1,13 @@
 /* Specify a folder path to write the temporary output files */
 %let outdir = &USERDIR.; 
+libname mysas "&outdir.";
 
 /* Specify the data set names */                    
 %let casdata          = mycas.post_log_train;            
 %let partitioned_data = mycas.post_log_part; 
 %let extended_data 	  = mycas.post_log_ext;
+%let sampled_data	  = mycas.post_log_sample;
+%let testdata         = mycas.post_log_test;
 
 /* Specify the data set inputs and target */
 %let class_inputs    = ;
@@ -42,6 +45,7 @@
 					   WOE_K_ATP WOE_SKP1_d338 WOE_SKP1_d404 WOE_SKP1_d452 WOE_SKP1_d492 
 					   WOE_SKP1_d498; 
 %let target          = BIN_norm_dd_x;
+
 
 /************************************************************************/
 /* Identify variables that explain variance in the target               */
@@ -110,24 +114,33 @@ signoff;
 
 proc contents data=mycas.post_SelectionSummary; run;
 
+
 /************************************************************************/
 /* Build a predictive model using Logistic Regression                   */
 /************************************************************************/
-ods output FitStatistics=_logselectFitStatistics;
 proc logselect data=&partitioned_data. alpha=0.05;
 	partition role=_role_(validate='validation' train='training');
 	model &target.(event='0')= &interval_inputs. / link=logit clb;
-	*selection method=forward
-        (select=sbc stop=sbc choose=validate) hierarchy=none;
     selection method=lasso
-        (choose=validate) hierarchy=none; /* LASSO = IV */
+        (choose=validate) hierarchy=none details=summary; /* lasso = IV = gradboost */
 	freq _freq_;
 	code file="&outdir./logselect.sas";
 run;
 
 /************************************************************************/
+/* Build a basic predictive model for Comparison purposes               */
+/************************************************************************/
+proc logselect data=&partitioned_data.;
+	partition role=_role_(validate='validation' train='training');
+	model &target.(event='0')= WOE_STD_SKP1_P_d343_Col1 WOE_STD_SKP1_P_d324_Col1 / link=logit;
+	freq _freq_;
+	code file="&outdir./base.sas";
+run;
+
+/************************************************************************/
 /* Build a predictive model using Gradient Boosting                     */
 /************************************************************************/
+/* Maybe using only 1 worker? */
 data &extended_data.(drop=i);
 	set &partitioned_data.;
 	do i = 1 to round(_freq_,1);
@@ -135,122 +148,156 @@ data &extended_data.(drop=i);
 	end;
 run;
 
+/* To set minleafsize to 0.05 * Number of Obs in post_(gen)_train */
 *data _null_;
 *	if 0 then set mycas.post_gen_train nobs=N;
 *	call symput('N', strip(put(N,8.)));
 *	stop;
 *run;
 
-ods output FitStatistics=_gradboostFitStatistics;
+ods output VariableImportance=mysas._gradboostVariableImportance;
 proc gradboost data=&extended_data. 
 		ntrees=20 maxdepth=5 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
 		outmodel=mycas._gradboostModel; *minleafsize=0.05*&N. ntrees=200;
-	partition role=_role_ (validate='validation' train='training');
+	partition role=_role_(validate='validation' train='training');
 	target &target. / level=nominal;
 	input &interval_inputs. / level=interval;
 	code file="&outdir./gradboost.sas";
 run;
 
 /************************************************************************/
+/* Bar chart with Variable Importance			                        */
+/************************************************************************/
+ods graphics on / reset imagemap height=512px width=2048px border=off;
+ods html path="&outdir." gpath="&outdir." file="VariableImportance.html" style=HTMLBlue;
+
+proc sgplot data=mysas._gradboostVariableImportance;
+	title 'Variable Importance';
+	vbar Variable / response=Importance fillattrs=(color=CX176ae6) categoryorder=respdesc 
+		datalabel transparency=0.1 stat=Mean name='Bar';
+	yaxis grid label='Importance';
+run;
+
+ods html close;
+ods graphics / reset;
+title;
+
+/************************************************************************/
+/* Build a predictive model on oversampled data		                    */
+/************************************************************************/
+proc partition data=&extended_data. event='1' eventprop=0.5 sampPctEvt=100;
+	by BIN_norm_dd_x;
+	output out=&sampled_data. freqname=freqname;
+run;
+
+proc gradboost data=&sampled_data. 
+		ntrees=30 maxdepth=5 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
+		outmodel=mycas._gradboostModel;
+	partition role=_role_ (validate='validation' train='training');
+	target &target. / level=nominal;
+	input &interval_inputs. / level=interval;
+	code file="&outdir./oversampling.sas";
+run;
+
+
+/************************************************************************/
 /* Score the data using the generated model                             */
 /************************************************************************/
 data mycas._scored_logselect;
-	set mycas.post_gen_test;
+	set &testdata.;
 	%include "&outdir./logselect.sas";
-	p_&target.1 = 1-p_&target.0;
+	p_&target.0 = p_&target.;
+	p_&target.1 = 1-p_&target.;
+run;
+
+data mycas._scored_base;
+	set &testdata.;
+	%include "&outdir./base.sas";
+	p_&target.0 = p_&target.;
+	p_&target.1 = 1-p_&target.;
+run;
+
+data mycas._scored_gradboost;
+	set &testdata.;
+	%include "&outdir./gradboost.sas";
+run;
+
+data mycas._scored_oversampling;
+	set &testdata.;
+	%include "&outdir./oversampling.sas";
 run;
 
 
 /****************************/
 /* Assess model performance */
 /****************************/
-libname BethWork "/home/sasdemo";
-
-%macro assess_model (prefix=, var_evt=, var_nevt=);
-
-proc assess data=&caslibname.._scored_&prefix.;
- input &var_evt.;
- target bad / level=nominal event='1';
- fitstat pvar=&var_nevt. / pevent='0';
- by _partind_;
- ods output fitstat = BethWork.&prefix._fitstat
-  rocinfo = BethWork.&prefix._rocinfo
-  liftinfo = BethWork.&prefix._liftinfo;
-run;
-
+%macro assess_model(prefix=, var_evt=);
+	proc assess data=mycas._scored_&prefix. ncuts=1000;
+	input p_&target.1;
+	target &target. / level=nominal event='1';
+	freq _freq_;
+	fitstat pvar=p_&target.0 / pevent='0';
+	ods output  rocinfo = mysas.&prefix._ROCinfo
+				liftinfo = mysas.&prefix._liftinfo;
+	run;
 %mend assess_model;
 
-%assess_model(prefix=gradboost,var_evt=p_bad1,var_nevt=p_bad0);
-%assess_model(prefix=logselect,var_evt=p_bad, var_nevt=p_bad0);
+%assess_model(prefix=logselect);
+%assess_model(prefix=base);
+%assess_model(prefix=gradboost);
+%assess_model(prefix=oversampling);
+
 
 /*******************************************/
 /* Analyze model using ROC and Lift charts */
 /*******************************************/
-ods graphics on;
-proc format;
- value partindlbl
- 0 = 'Validation'
- 1 = 'Training';
-run;
-
-data BethWork.all_rocinfo;
- set
- BethWork.logselect_rocinfo(keep=sensitivity fpr _partind_ in=l)
- BethWork.forest_rocinfo (keep=sensitivity fpr _partind_ in=f)
- BethWork.gradboost_rocinfo(keep=sensitivity fpr _partind_ in=g);
-
- length model $ 16;
- select;
-  when (l) model = 'Logistic';
-  when (f) model = 'Forest';
-  when (g) model = 'GradientBoosting';
- end;
-run;
-
-/* Plot Validition and Training Together on a Separate ROC Graph for Each Model */
-proc sgpanel data=BethWork.all_rocinfo aspect=1;
- panelby model / layout=columnlattice spacing=5;
- title "ROC Curve Panel";
- rowaxis label="True positive rate" values=(0 to 1 by 0.25) grid offsetmin=0.05 offsetmax=0.05;
- colaxis label="False positive rate" values=(0 to 1 by 0.25) grid offsetmin=0.05 offsetmax=0.05;
- lineparm x=0 y=0 slope=1 / transparency=0.7;
- series x=fpr y=sensitivity /group=_partind_;
- format _partind_ partindlbl.;
+data mysas.all_ROCinfo;
+	set mysas.logselect_ROCinfo(keep=tp fp tn fn sensitivity fpr in=l)
+		mysas.base_ROCinfo(keep=tp fp tn fn sensitivity fpr in=b)
+		mysas.gradboost_ROCinfo(keep=tp fp tn fn sensitivity fpr in=g)
+		mysas.oversampling_ROCinfo(keep=tp fp tn fn sensitivity fpr in=o);
+	length model $ 32;
+	select;
+		when (l) model = 'Logistic Regression (LASSO)';
+		when (b) model = 'Basic Model';
+		when (g) model = 'Gradient Boosting';
+		when (o) model = 'Gradient Boosting (oversampling)';
+	end;
+	misc = (fp+fn)/(tp+fp+tn+fn);
 run;
 
 /* Plot ROC Curves for All Models Together */
-proc sgpanel data=BethWork.all_ROCinfo;
- panelby _partind_ / layout=columnlattice spacing=5;
- title "ROC Curve Models Overlain";
- rowaxis label="True Positive Rate";
- colaxis label="False Positive Rate" grid;
- lineparm x=0 y=0 slope=1 / transparency=0.7;
- series x=fpr y=sensitivity / group=model;
- format _partind_ partindlbl.;
+ods graphics on / reset imagemap;
+
+proc sgplot data=mysas.all_ROCinfo;
+	title "ROC Curve Models Overlain";
+	yaxis label="Sensitivity";
+	xaxis label="False Positive Rate" grid;
+	lineparm x=0 y=0 slope=1 / transparency=0.7;
+	series x=fpr y=sensitivity / group=model;
 run;
 
-/* Plot ROC Curves for All Models Together With Markers */
-proc sgpanel data=BethWork.all_ROCinfo;
- panelby _partind_ / layout=columnlattice spacing=5;
- title "ROC Curve Models Overlain With Markers";
- rowaxis label="True Positive Rate";
- colaxis label="False Positive Rate" grid;
- lineparm x=0 y=0 slope=1 / transparency=0.7;
- series x=fpr y=sensitivity / group=model markers markerattrs=(symbol=circlefilled);
- format _partind_ partindlbl.;
+/* Create lift charts */
+data mysas.all_liftinfo;
+	set mysas.logselect_liftinfo(keep=depth lift cumlift in=l)
+		mysas.base_liftinfo(keep=depth lift cumlift in=b)
+		mysas.gradboost_liftinfo(keep=depth lift cumlift in=g)
+		mysas.oversampling_liftinfo(keep=depth lift cumlift in=o);
+	length model $ 32;
+	select;
+		when (l) model = 'Logistic Regression (LASSO)';
+		when (b) model = 'Basic Model';
+		when (g) model = 'Gradient Boosting';
+		when (o) model = 'Gradient Boosting (oversampling)';
+	end;
 run;
 
-/************************************************************************/
-/* Assess model performance                                             */
-/************************************************************************/
-/* TO DO: macro */
-proc assess data=mycas._scored_logselect;
-	input p_bad1;
-	target &target. / level=nominal event='0';
-	fitstat pvar=p_bad0 / pevent='0';
-	by _partind_;
-	ods output fitstat  = forest_fitstat 
-	           rocinfo  = forest_rocinfo 
-	           liftinfo = forest_liftinfo;
+proc sgplot data=mysas.all_liftinfo;
+	title "Lift Chart Models Overlain";
+	yaxis label="Lift";
+	xaxis label="Depth" grid;
+	series x=depth y=cumlift / group=model markers markerattrs=(symbol=circlefilled);
 run;
 
+title;
+ods graphics off;

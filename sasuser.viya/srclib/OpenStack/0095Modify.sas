@@ -12,7 +12,7 @@ run;
 	%do i=1 %to &n;
 	%let casdata=%scan(&tables,&i);
 	proc casutil outcaslib="casuser";
-		load casdata="&casdata..sas7bdat" casout="&casdata." promote; /* promote */
+		load casdata="&casdata..sas7bdat" casout="&casdata."; /* promote */
 	run;
 	%end;
 %mend;
@@ -20,7 +20,7 @@ run;
 %load(tables=post_log_train post_log_validate post_log_test);
 
 proc casutil;
-	contents casdata="post_log_ext";
+	contents casdata="post_log_part";
 run;
 
 /************************************************************************/
@@ -40,3 +40,8 @@ run;
 *	by bad;
 *	output out=&partitioned_data copyvars=(_ALL_);
 *run;
+
+data mycas.post_log_test;
+	set mycas.post_log_test;
+	_freq_ = 10 * _freq_;
+run;
