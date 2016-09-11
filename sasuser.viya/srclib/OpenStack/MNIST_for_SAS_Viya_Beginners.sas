@@ -86,7 +86,6 @@ proc nnet data=mycas.mnist_train standardize=std;
 	code file="&USERDIR./nnetModel.sas";
 run;
 
-ods _all_ close;
 ods graphics on / scale=on;
 title "Iteration History";
 
@@ -96,6 +95,8 @@ proc sgplot data=mysas.OptIterHistory;
 	series x=Progress y=Loss / lineattrs=(color=gray pattern=2);
 	series x=Progress y=Objective / lineattrs=(color=blue pattern=1);
 run;
+
+ods _all_ close;
 
 /* hidden 2 / act=tanh allows us to visualize the Extracted Features */
 data mycas.extractedFeatures(keep=hidden1 hidden2 d784);
@@ -116,6 +117,8 @@ proc sgplot data=extractedFeatures;
 	scatter x=hidden1 y=hidden2 / group=d784 groupdisplay=cluster clusterwidth=0 
 		markercharattrs=(size=3.75pt) markerchar=d784 transparency=0.3;
 run;
+
+ods _all_ close;
 
 /* How well does our model do? */
 proc nnet data=mycas.mnist_test inmodel=mycas.nnetModel;
