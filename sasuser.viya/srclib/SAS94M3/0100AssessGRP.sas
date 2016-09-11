@@ -1,6 +1,12 @@
 libname EMPro "/sastest/EMProjects/Aperam/DataSources";
 libname tmp "/tmp/v94/";
 
+%let alldata = EMPro.post_glm_train;
+
+/************************************************************************/
+/* Create necessary data sets					                        */
+/************************************************************************/
+
 /* Move WOE GRP data to our usual ousaslib */
 data tmp.post_grp_all;
 	set EMPro.post_grp_train; *EMPro.post_grp_train EMPro.post_grp_validate;
@@ -94,10 +100,14 @@ data tmp.post_grp_all;
 	if first.KeyCol_deel;
 run;
 
+proc surveyselect data=tmp.post_grp_all
+   method=srs n=500 out=SampleSRS;
+run;
+
 proc sql noprint;
 	create table tmp.skp1walsplusKeysplusGRP as
 	select a.*, b.*
- 	from tmp.post_grp_all 					  a
+ 	from SampleSRS		 					  a
       	 left join tmp.skp1walsplusKeysforGRP b
  	on a.KeyCol_deel = b.KeyCol
  	order by a.KeyCol_deel;
@@ -151,36 +161,21 @@ quit;
 					   GRP_STD_G GRP_STD_G_IN GRP_K_ATP ;
 */
 
-/*----------*/
+/************************************************************************/
+/* Plots for Interval and Categorical Input		                        */
+/************************************************************************/
 
-/* Plots */
-
-/*----------*/
-
-%let _panel_ = GRP_STD_SKP1_P_d324_Col1;
+%let _panel_ = GRP_STD_SKP1_P_d343_Col1;
 %let _input_ = d343;
 
-ods graphics / reset imagemap width=512px height=512px;
+ods graphics / reset imagemap width=256px height=256px;
+title "Time Series of Interval Input by WOE";
 proc sgpanel data=tmp.skp1walsplusKeysplusGRP;
-	panelby &_panel_. / layout=rowlattice spacing=5;
-	rowaxis label="Time";
-	colaxis label="&_input_." grid;
-	series x=ts_registratie y=P_&_input_. / transparency=0.3 lineattrs=(color=CX176ae6);
-run;
-
-ods graphics / reset;
-
-/*----------*/
-
-proc contents data=EMPro.post_glm_train; run;
-%let _input_ = STD_REP_SKP1_d383;
-
-ods graphics / reset imagemap;
-title 'Scatter Plot for Interval Inputs';
-proc sgplot data=EMPro.post_glm_train;
-	xaxis label="&_input_.";
-	yaxis label="POST" grid;
-	scatter x=&_input_. y=norm_dd_x / transparency=0.3 markerattrs=(color=CX176ae6);
+	panelby &_panel_. / layout=columnlattice spacing=5;
+	colaxis label="Time (s)";
+	rowaxis label="&_input_." grid;
+	label &_panel_.="WOE: GRP";
+	scatter x=ts_registratie y=P_&_input_. / transparency=0.3 markerattrs=(color=CX176ae6 symbol=CircleFilled);
 run;
 
 ods graphics / reset;
@@ -188,12 +183,32 @@ title;
 
 /*----------*/
 
-proc contents data=EMPro.post_glm_train; run;
+proc contents data=&alldata.; run;
+
+%let _input_ = STD_REP_SKP1_d383;
+
+ods graphics / reset imagemap;
+title "Scatter Plot for Interval Input";
+proc sgplot data=&alldata.;
+	xaxis label="&_input_.";
+	yaxis grid;
+	scatter x=&_input_. y=norm_dd_x / transparency=0.3 markerattrs=(color=CX176ae6 symbol=CircleFilled);
+	label norm_dd_x="POST";
+	reg x=&_input_. y=norm_dd_x / transparency=0.7;
+run;
+
+ods graphics / reset;
+title;
+
+/*----------*/
+
+proc contents data=&alldata.; run;
+
 %let _input_ = TG_K_ATP;
 
 ods graphics / reset imagemap;
-title 'Box Plot for Categorical Inputs';
-proc sgplot data=EMPRO.POST_GLM_TRAIN;
+title "Box Plot for Categorical Input";
+proc sgplot data=&alldata.;
 	xaxis label="&_input_." fitpolicy=splitrotate;
 	yaxis label="POST" grid;
 	vbox norm_dd_x / category=&_input_. fillattrs=(color=CXCAD5E5);
