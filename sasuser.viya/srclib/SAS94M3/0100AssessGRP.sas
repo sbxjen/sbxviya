@@ -165,8 +165,8 @@ quit;
 /* Plots for Interval and Categorical Input		                        */
 /************************************************************************/
 
-%let _panel_ = GRP_STD_SKP1_P_d343_Col1;
-%let _input_ = d343;
+%let _panel_ = GRP_STD_SKP1_P_d400_Col1;
+%let _input_ = d400;
 
 ods graphics / reset imagemap width=256px height=256px;
 title "Time Series of Interval Input by WOE";
@@ -175,7 +175,7 @@ proc sgpanel data=tmp.skp1walsplusKeysplusGRP;
 	colaxis label="Time (s)";
 	rowaxis label="&_input_." grid;
 	label &_panel_.="WOE: GRP";
-	scatter x=ts_registratie y=P_&_input_. / transparency=0.3 markerattrs=(color=CX176ae6 symbol=CircleFilled);
+	series x=ts_registratie y=P_&_input_. / group=KeyCol_deel transparency=0.3 markerattrs=(color=CX176ae6 symbol=CircleFilled);
 run;
 
 ods graphics / reset;
@@ -185,11 +185,11 @@ title;
 
 proc contents data=&alldata.; run;
 
-%let _input_ = STD_REP_SKP1_d383;
+%let _input_ = STD_REP_SKP1_d520;
 
 ods graphics / reset imagemap;
 title "Scatter Plot for Interval Input";
-proc sgplot data=&alldata.;
+proc sgplot data=&alldata.(where=(&_input_.>-3));
 	xaxis label="&_input_.";
 	yaxis grid;
 	scatter x=&_input_. y=norm_dd_x / transparency=0.3 markerattrs=(color=CX176ae6 symbol=CircleFilled);
@@ -204,7 +204,7 @@ title;
 
 proc contents data=&alldata.; run;
 
-%let _input_ = TG_K_ATP;
+%let _input_ = IMP_bCodeSlijpSteenReden;
 
 ods graphics / reset imagemap;
 title "Box Plot for Categorical Input";
