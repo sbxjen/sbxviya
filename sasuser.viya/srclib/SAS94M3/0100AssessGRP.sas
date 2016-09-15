@@ -144,9 +144,9 @@ data tmp.post_grp_all;
 run;
 
 /* You can take a sample before plotting */
-*proc surveyselect data=tmp.post_grp_all
-*   method=srs n=500 out=SampleSRS;
-*run;
+proc surveyselect data=tmp.post_grp_all
+   method=srs n=500 out=SampleSRS;
+run;
 
 proc sql noprint;
 	create table tmp.skp1walsplusKeysplusGRP as
@@ -157,10 +157,6 @@ proc sql noprint;
  	order by a.KeyCol_deel;
 quit;
 
-
-
-%let _panel_ = GRP_STD_SKP1_P_d324_Col1;
-%let _input_ = d324;
 
 /************************************************************************/
 /* Histogram of norm_dd_x (INTERVAL TARGET)           					*/
@@ -175,13 +171,16 @@ run;
 /* Plots for TSDR Input		                        					*/
 /************************************************************************/	
 
+%let _panel_ = GRP_STD_SKP1_P_d324_Col1;
+%let _input_ = d324;
+
 data tmp.skp1walsplusKeysplusGRP;
 	set tmp.skp1walsplusKeysplusGRP;
 	time_registratie = timepart(ts_registratie);
 run;
 
 ods graphics / reset imagemap antialiasmax=22700 width=300px height=300px;
-*title "Interval Input Time Series by WOE Attribute";
+*title "Interval INPUT Time Series by WOE Attribute";
 proc sgpanel data=tmp.skp1walsplusKeysplusGRP;*(where=(ts_registratie < '08oct2015:00:00:00'dt));
 	panelby &_panel_. / layout=columnlattice spacing=5;
 	colaxis label="Time" tickvalueformat=time.;
@@ -208,7 +207,6 @@ proc sgpanel data=tmp.skp1walsplusKeysplusGRP;*(where=(ts_registratie < '08oct20
 	series x=time_registratie y=P_d343 / group=KeyCol_deel transparency=0.3 lineattrs=(color="PowderBlue" thickness=2);
 run;
 
-title;
 ods graphics / reset;
 
 
@@ -226,7 +224,8 @@ proc freq data=tmp.post_grp_all;
 run;
 
 ods graphics / reset imagemap width=400px height=400px;
-title 'Proportion _deel obs for each "Bandsnelheid" WOE Attribute';
+title 'Proportion 5" Obs';
+title2 '"Bandsnelheid ist" WOE Attribute GRP';
 proc sgplot data=OneWayFreqs;
 	vbar &_panel_. / response=Percent stat=Mean transparency=0.3 fillattrs=(color="PowderBlue");
 	label &_panel_.="GRP";
