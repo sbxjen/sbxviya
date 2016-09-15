@@ -1,3 +1,5 @@
+options cashost="sbxjen1.instance.openstack.sas.com" casport=5570 casuser="sasdemo";
+
 cas mysess sessopts=(caslib="casuser" nworkers=2) uuidmac=uuid;
 libname mycas cas caslib="casuser";
 
@@ -7,13 +9,13 @@ proc casutil incaslib="casuser";
 	list tables;
 run;
 
-/* Load a server-side file as an in-memory data table */
+/* Load a client-side file as an in-memory data table */
 %macro load(tables=);
 	%let n=%sysfunc(countw(&tables,%str( )));
 	%do i=1 %to &n;
 	%let casdata=%scan(&tables,&i);
 	proc casutil outcaslib="casuser";
-		load casdata="&casdata..sas7bdat" casout="&casdata."; /* promote */
+		load data="&casdata..sas7bdat" casout="&casdata."; /* promote */
 	run;
 	%end;
 %mend;
