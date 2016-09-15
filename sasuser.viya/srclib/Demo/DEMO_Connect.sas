@@ -3,6 +3,10 @@ options cashost="sbxjen1.instance.openstack.sas.com" casport=5570 casuser="sasde
 cas mysess sessopts=(caslib="casuser" nworkers=2) uuidmac=uuid;
 libname mycas cas caslib="casuser";
 
+/* Specify a folder path to write the temporary output files */
+%let outdir = &USERDIR.; 
+libname mysas "&outdir.";
+
 /* List files and tables available in caslib */
 proc casutil incaslib="casuser";
 	list files;
@@ -15,7 +19,7 @@ run;
 	%do i=1 %to &n;
 	%let casdata=%scan(&tables,&i);
 	proc casutil outcaslib="casuser";
-		load data="&casdata..sas7bdat" casout="&casdata."; /* promote */
+		load file="&outdir./&casdata..sas7bdat" casout="&casdata."; /* promote */
 	run;
 	%end;
 %mend;

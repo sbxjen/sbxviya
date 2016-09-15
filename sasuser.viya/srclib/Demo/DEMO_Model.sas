@@ -1,13 +1,13 @@
-/* Specify a folder path to write the temporary output files */
-%let outdir = &USERDIR.; 
-libname mysas "&outdir.";
+/************************************************************************/
+/* Build predictive models                 							*/
+/************************************************************************/
 
 /* Specify the data set names */                    
-%let casdata          = mycas.post_log_train;            
+%let traindata        = mycas.post_log_train;
+%let testdata         = mycas.post_log_test;           
 %let partitioned_data = mycas.post_log_part; 
 %let extended_data 	  = mycas.post_log_ext;
 %let sampled_data	  = mycas.post_log_sample;
-%let testdata         = mycas.post_log_test;
 
 /* Specify the data set inputs and target */
 %let class_inputs    = ;
@@ -48,32 +48,13 @@ libname mysas "&outdir.";
 
 
 /************************************************************************/
-/* Identify variables that explain variance in the target               */
-/************************************************************************/
-/* We limit the number of variables to 70 */
-
-/* Connect to the SAS 9.4 server and rsubmit code 		*/
-%let myserver=sbxintern16.sbx.sas.com 7551;
-options remote=myserver;
-
-signon user="sastest" passwd="Orion123!";
-rsubmit;
-
-	/* Create libref on remote session 					*/
-	libname mysas "/sastest/EMProjects/Aperam/DataSources";
-	
-endrsubmit;
-signoff;
-
-
-/************************************************************************/
 /* Build a predictive model using Logistic Regression                   */
 /************************************************************************/
 proc logselect data=&partitioned_data. alpha=0.05;
 	partition role=_role_(validate='validation' train='training');
 	model &target.(event='0')= &interval_inputs. / link=logit clb;
     selection method=lasso
-        (choose=validate) hierarchy=none details=summary; /* lasso = IV = gradboost */
+        (choose=validate) hierarchy=none details=summary;
 	freq _freq_;
 	code file="&outdir./logselect.sas";
 run;
@@ -91,7 +72,6 @@ run;
 /************************************************************************/
 /* Build a predictive model using Gradient Boosting                     */
 /************************************************************************/
-/* Maybe using only 1 worker? */
 data &extended_data.(drop=i);
 	set &partitioned_data.;
 	do i = 1 to round(_freq_,1);
@@ -99,16 +79,9 @@ data &extended_data.(drop=i);
 	end;
 run;
 
-/* To set minleafsize to 0.05 * Number of Obs in post_(gen)_train */
-*data _null_;
-*	if 0 then set mycas.post_gen_train nobs=N;
-*	call symput('N', strip(put(N,8.)));
-*	stop;
-*run;
-
-ods output VariableImportance=mysas._gradboostVariableImportance;
+ods output VariableImportance=mysas.Gradboost_varimp;
 proc gradboost data=&extended_data. 
-		ntrees=60 maxdepth=4 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
+		ntrees=40 maxdepth=4 samplingrate=0.5 vars_to_try=96 seed=23451 minleafsize=5 
 		outmodel=mycas._gradboostModel; *minleafsize=0.05*&N. ntrees=200;
 	partition role=_role_(validate='validation' train='training');
 	target &target. / level=nominal;
@@ -119,19 +92,32 @@ run;
 /************************************************************************/
 /* Bar chart with Variable Importance			                        */
 /************************************************************************/
-ods graphics on / reset imagemap height=512px width=2048px border=off;
-ods html path="&outdir." gpath="&outdir." file="VariableImportance.html" style=HTMLBlue;
-
-proc sgplot data=mysas._gradboostVariableImportance;
-	title 'Variable Importance';
-	vbar Variable / response=Importance fillattrs=(color=CX176ae6) categoryorder=respdesc 
-		datalabel transparency=0.1 stat=Mean name='Bar';
-	yaxis grid label='Importance';
+data mysas.Gradboost_varimp;
+	set mysas.Gradboost_varimp;
+	CumImportance + Importance;
 run;
 
-ods html close;
+data _null_;
+	set mysas.Gradboost_varimp(keep=CumImportance) end=last;
+	if last then call symputx("Total", CumImportance);
+run;
+
+data mysas.Gradboost_varimp;
+	set mysas.Gradboost_varimp;
+	CumImportance = CumImportance / &Total.;
+run;
+
+ods graphics on / reset imagemap height=500px width=1200px border=off;
+proc sgplot data=mysas.Gradboost_varimp(where=(CumImportance<0.8));
+	title "The GRADBOOST Procedure Variable Importance";
+	vbar Variable / response=Importance fillattrs=(color="Blue") categoryorder=respdesc 
+		datalabel transparency=0.3 stat=Mean;
+	yaxis grid label="'Residual Sum of Squares Importance";
+run;
+
 ods graphics / reset;
 title;
+
 
 /************************************************************************/
 /* Build a predictive model on oversampled data		                    */
@@ -152,7 +138,25 @@ run;
 
 
 /************************************************************************/
-/* Score the data using the generated model                             */
+/* Build a predictive model using a Decision Tree	                    */
+/************************************************************************/
+ods output VariableImportance=mysas.Treesplit_varimp;
+ods graphics on / reset imagemap height=2000px width=2000px border=off;
+proc treesplit data=&partitioned_data. maxdepth=3 plots(only)=(zoomedtree);
+	partition role=_role_ (validate='validation' train='training');
+	input &interval_inputs. / level=nominal;
+	target &target. / level=nominal;
+	freq _FREQ_;
+	grow entropy;
+	prune c45;
+	code file="&outdir./treesplit.sas";
+run;
+
+ods graphics / reset;
+
+
+/************************************************************************/
+/* Score the data using the generated models                            */
 /************************************************************************/
 data mycas._scored_logselect;
 	set &testdata.;
@@ -206,13 +210,13 @@ data mysas.all_ROCinfo;
 	set mysas.logselect_ROCinfo(keep=tp fp tn fn sensitivity fpr in=l)
 		mysas.base_ROCinfo(keep=tp fp tn fn sensitivity fpr in=b)
 		mysas.gradboost_ROCinfo(keep=tp fp tn fn sensitivity fpr in=g)
-		mysas.oversampling_ROCinfo(keep=tp fp tn fn sensitivity fpr in=o)
-	length model $ 32;
+		mysas.oversampling_ROCinfo(keep=tp fp tn fn sensitivity fpr in=o);
+	length model $ 40;
 	select;
-		when (l) model = 'Logistic Regression (LASSO) 2';
-		when (b) model = 'Basic Model 2';
-		when (g) model = 'Gradient Boosting 2';
-		when (o) model = 'Gradient Boosting (oversampling) 2';
+		when (l) model = 'Logistic Regression (LASSO)';
+		when (b) model = 'Basic Model';
+		when (g) model = 'Gradient Boosting';
+		when (o) model = 'Gradient Boosting (with oversampling)';
 	end;
 	misc = (fp+fn)/(tp+fp+tn+fn);
 run;
@@ -222,6 +226,7 @@ ods graphics on / reset imagemap;
 
 proc sgplot data=mysas.all_ROCinfo;
 	title "ROC Curve Models Overlain";
+	styleattrs datacontrastcolors=("Blue" "Gray" "Red" "Green");
 	yaxis label="Sensitivity";
 	xaxis label="False Positive Rate" grid;
 	lineparm x=0 y=0 slope=1 / transparency=0.7;
@@ -234,17 +239,18 @@ data mysas.all_liftinfo;
 		mysas.base_liftinfo(keep=depth lift cumlift in=b)
 		mysas.gradboost_liftinfo(keep=depth lift cumlift in=g)
 		mysas.oversampling_liftinfo(keep=depth lift cumlift in=o);
-	length model $ 32;
+	length model $ 40;
 	select;
 		when (l) model = 'Logistic Regression (LASSO)';
 		when (b) model = 'Basic Model';
 		when (g) model = 'Gradient Boosting';
-		when (o) model = 'Gradient Boosting (oversampling)';
+		when (o) model = 'Gradient Boosting (with oversampling)';
 	end;
 run;
 
 proc sgplot data=mysas.all_liftinfo;
 	title "Lift Chart Models Overlain";
+	styleattrs datacontrastcolors=("Blue" "Gray" "Red" "Green");
 	yaxis label="Lift";
 	xaxis label="Depth" grid;
 	series x=depth y=cumlift / group=model markers markerattrs=(symbol=circlefilled);
