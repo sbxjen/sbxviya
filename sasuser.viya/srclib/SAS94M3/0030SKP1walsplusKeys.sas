@@ -29,8 +29,7 @@ data ousaslib.skp1walsplusKeys;
 				_deel = _deel + 1;
 			end;
 			_dx = d324/60 * 5;			/* \Delta_x = Bandsnelheid (m/s) * 5s */ 
-			_x = _x + _dx;		
-			*_dd524 = (d524 - lag(d524)) / _dx;
+			_x = _x + _dx;
 			/* These are the 5" observations we want to keep in skp1walsplusKeys */
 			output;
 			*put "output";
