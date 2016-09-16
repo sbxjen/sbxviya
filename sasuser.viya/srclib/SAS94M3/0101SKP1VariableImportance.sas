@@ -9,7 +9,7 @@ run;
 
 data skp1_sigdef;
 	set insaslib.skp1_sigdef;
-	label signaal='Variable' eenheid='Unit';
+	label signaal_nr='Variable Nr.' signaal='Variable' eenheid='Unit';
 	keep signaal_nr signaal eenheid;
 run;
 
@@ -30,7 +30,7 @@ data varimp;
 	set varimp;
 	by descending Importance signaal_nr;
 	if first.signaal_nr then output;
-	keep Importance signaal eenheid;
+	keep Importance signaal_nr signaal eenheid;
 run;
 
 proc print data=varimp label; run;
