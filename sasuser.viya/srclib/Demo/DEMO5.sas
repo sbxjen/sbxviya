@@ -1,6 +1,5 @@
-*1. CAS session = CASAUTO
-*2. CASLIB = CASUSER(sbxjen);
-
+options cashost="sbxjen1.instance.openstack.sas.com" casport=5570 casuser="sasdemo";
+cas casauto sessopts=(caslib="casuser"); 
 libname mycas cas caslib="casuser";
 
 data mycas.class;
@@ -23,10 +22,8 @@ filename newcols "/home/sasuser/mypgm.sas";
 
 /* Only the variables listed in the TEMPNAMES= option are added to the input table */
 proc mdsummary data=mycas.class(tempnames=(bmi a) script=newcols); /* in this way, we don't have to create a new data set of temps */
-	var weight height bmi a;
+	var weight height bmi;
 	output out=mycas.mdsumstat;
 run;
-
-
 
 proc print data=mycas.class(obs=5); run;

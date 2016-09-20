@@ -5,6 +5,8 @@ libname mycas cas caslib="casuser";
 
 %put &uuid.;
 
+%put nworkers=%sysfunc(getsessopt(mysess, nworkers));
+
 /* Specify a folder path where the temporary output files are */
 %let outdir = &USERDIR.; 
 libname mysas "&outdir.";
