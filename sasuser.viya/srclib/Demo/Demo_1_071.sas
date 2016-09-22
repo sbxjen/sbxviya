@@ -1,3 +1,7 @@
+/************************************************************************/
+/* Elasticity in CAS		                 							*/
+/************************************************************************/
+
 options cashost="sbxjen1.instance.openstack.sas.com" casport=5570 casuser="sasdemo";
 
 cas mysess sessopts=(caslib="casuser" nworkers=2) uuidmac=uuid;

@@ -2,7 +2,7 @@ options cashost="sbxjen1.instance.openstack.sas.com" casport=5570 casuser="sasde
 cas casauto sessopts=(caslib="casuser"); 
 libname mycas cas caslib="casuser";
 
-/* Create an in-memory data table */
+/* Create an in-memory data from client-side data */
 data mycas.class;
 	set sashelp.class; 
 run;

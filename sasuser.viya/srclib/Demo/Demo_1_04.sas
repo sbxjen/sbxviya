@@ -16,4 +16,4 @@ data mycas.baseball(partition=(Div) orderby=(nHome));
 	set mycas.baseball;
 run;
 
-proc print data=mycas.baseball; run; /* works */
+proc print data=mycas.baseball; run; /* Once partitioned: works */

@@ -1,3 +1,5 @@
+/* This Code Snippet was used in a Code Node in SAS Enterprise Miner, upon changing MACRO variables */
+
 proc copy in=sashelp out=work;
 	select heart;
 run;
