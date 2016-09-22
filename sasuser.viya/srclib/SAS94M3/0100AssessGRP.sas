@@ -292,14 +292,14 @@ title;
 
 proc contents data=&alldata.; run;
 
-%let _input_ = SKP1_d383;
+%let _input_ = SKP1_P_d327_Mean;
 
 ods graphics / reset imagemap;
-title "Scatter Plot for Original NOMINAL Input";
-proc sgplot data=&alldata.;
-	xaxis label="Dikte coil ingang istw (mm)";
+title "Scatter Plot for Original INTERVAL Input";
+proc sgplot data=&alldata.(where=(&_input_.>-1 and &_input_.<3));
+	xaxis label="Verlenging Omkeerrollen (mm)";
 	yaxis grid;
-	scatter x=&_input_. y=norm_dd_x / transparency=0.3 markerattrs=(color="Blue" symbol=CircleFilled);
+	scatter x=&_input_. y=norm_dd_x / group=K_ATP transparency=0.3 markerattrs=( symbol=CircleFilled); *color="Blue";
 	*reg x=&_input_. y=norm_dd_x / transparency=0.7;
 run;
 
